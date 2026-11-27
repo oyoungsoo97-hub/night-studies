@@ -6,7 +6,8 @@ const mix=(a,b,t)=>a+(b-a)*t;
 const mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
 const ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 const gauss=(x,y,sx,sy)=>Math.exp(-.5*((x/sx)**2+(y/sy)**2));
-const fingers=[[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
+import {driveHand,curlHand} from './hand3d.mjs?v=b57fe028e9';
+export {driveHand as retargetHand,curlHand as manualHand};
 const radians=v=>Math.atan2(Math.sin(v),Math.cos(v));
 export function resting(){return {browL:0,browR:0,blinkL:0,blinkR:0,jaw:0,roll:0,yaw:0,pitch:0,hands:0,smileL:0,smileR:0,pucker:0,gazeX:0,gazeY:0,depth:0};}
 export function faceSignal(face,aspect){
@@ -57,32 +58,6 @@ function triangulate(points,aspect){
   return new Uint16Array(tris.filter(t=>t.ids.every(i=>i<n)).flatMap(t=>t.ids));
 }
 export function handPoints(hand,aspect){return hand.landmarks.map(pt=>({x:pt.x,y:pt.y*aspect,z:pt.z??0}));}
-export function retargetHand(original,current,base,gain,mirror){
-  if(!current||!base)return null;
-  const S=original, C=current, B=base;
-  const reach=Math.max(.023,hypot(S[0],S[9])*.56);
-  const target=[{x:S[0].x+clamp((C[0].x-B[0].x)*gain*(mirror?-1:1),-reach,reach),y:S[0].y+clamp((C[0].y-B[0].y)*gain,-reach,reach)}];
-  const sign=(pts)=>Math.sign((pts[5].x-pts[0].x)*(pts[17].y-pts[0].y)-(pts[5].y-pts[0].y)*(pts[17].x-pts[0].x))||1;
-  const flip=sign(S)*sign(B);
-  for(const chain of fingers){for(let k=1;k<5;k++){const a=chain[k-1],b=chain[k];
-    const angle=(arr)=>Math.atan2(arr[b].y-arr[a].y,arr[b].x-arr[a].x);
-    const baseLength=hypot(B[a],B[b]);const restLength=hypot(S[a],S[b]);
-    const turn=clamp(radians(angle(C)-angle(B))*gain,-1.25,1.25)*flip;
-    const length=restLength*clamp(1+(hypot(C[a],C[b])/Math.max(.003,baseLength)-1)*gain,.5,1.3);
-    target[b]={x:target[a].x+Math.cos(angle(S)+turn)*length,y:target[a].y+Math.sin(angle(S)+turn)*length};}}
-  const depthScale=gain*hypot(S[0],S[9])/Math.max(.018,hypot(B[0],B[9]));
-  for(let i=0;i<target.length;i++){
-    const delta=(B[i].z-B[0].z)-(C[i].z-C[0].z);
-    target[i].dz=Number.isFinite(delta)?clamp(delta*depthScale,-reach,reach):0;
-  }
-  return target;
-}
-export function manualHand(original,amount,side){
-  if(!amount)return null;const palm=Math.max(.02,hypot(original[0],original[9]));
-  const a=amount*.40*(side?1:-1),target=original.map((p,i)=>{
-    const x=p.x-original[0].x,y=p.y-original[0].y;
-    return {x:original[0].x+x*Math.cos(a)-y*Math.sin(a)+amount*palm*.2*(side?-1:1),y:original[0].y+x*Math.sin(a)+y*Math.cos(a)-amount*palm*.29+((i%4===0&&i>0)?amount*.1*palm:0),dz:p.dz||0};});return target;
-}
 function buildFaceWeights(p,face,aspect){
   if(!face?.landmarks?.[454])return null;
   const L=face.landmarks,at=i=>({x:L[i].x,y:L[i].y*aspect}),left=at(33),right=at(263),origin=mid(left,right);

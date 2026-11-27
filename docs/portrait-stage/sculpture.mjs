@@ -1,5 +1,5 @@
-import {buildHead3D} from './head3d.mjs?v=609490ac35';
-import {buildFigure3D} from './figure3d.mjs?v=2b025693aa';
+import {buildHead3D} from './head3d.mjs?v=da1a2754c5';
+import {buildFigure3D} from './figure3d.mjs?v=d3f4851903';
 
 export function normalsFor(points,triangles,out=new Float32Array(points.length)){
   out.fill(0);
@@ -28,7 +28,11 @@ function sampler(photo){
 }
 export function buildSculpture(photo,{face,hands,pose,aspect}){
   const sample=sampler(photo),input={photo,aspect,face,hands,pose,mask:pose?.mask,sample};
-  const parts=[['Figure',buildFigure3D(input)],['Head',buildHead3D(input)]].filter(([,part])=>part);
+  let head=buildHead3D({...input,joinNeck:true});
+  const figure=buildFigure3D({...input,head});
+  if(head&&figure?.neckStart==null)head=buildHead3D(input);
+  // Update the head first so a moving jaw and the collar share exactly the same rim.
+  const parts=[['Head',head],['Figure',figure]].filter(([,part])=>part);
   let count=0;const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
   for(const [name,part] of parts){
     part.name=name;part.current=part.positions.slice();part.normals=normalsFor(part.positions,part.indices);
@@ -37,10 +41,30 @@ export function buildSculpture(photo,{face,hands,pose,aspect}){
       min[d]=Math.min(min[d],part.positions[i+d]);max[d]=Math.max(max[d],part.positions[i+d]);
     }
   }
+  function smoothNeck(){
+    if(figure?.neckStart==null)return;
+    for(const [k,hi] of head.neckRing.entries()){
+      const h=hi*3,b=(figure.neckStart+k)*3;
+      const v=[0,1,2].map(d=>head.normals[h+d]+figure.normals[b+d]),mag=Math.hypot(...v)||1;
+      for(let d=0;d<3;d++)head.normals[h+d]=figure.normals[b+d]=v[d]/mag;
+    }
+  }
+  smoothNeck();
   if(!parts.length||![...min,...max].every(Number.isFinite))return null;
-  return {parts:parts.map(row=>row[1]),min,max,count,photo,sample,
+  const framing={min:[...min],max:[...max]};
+  return {parts:parts.map(row=>row[1]),min,max,framing,count,photo,sample,
     update(frame){
       for(const [,p] of parts){p.pose(frame,p.current);normalsFor(p.current,p.indices,p.normals);}
+      smoothNeck();
+      // Expand the rest framing when a raised arm reaches beyond it. Replaying a
+      // frozen pose must give exactly the same camera and PNG on every paint.
+      for(let d=0;d<3;d++){framing.min[d]=min[d];framing.max[d]=max[d];}
+      for(const [,part] of parts)for(let i=0;i<part.current.length;i+=3){
+        for(let d=0;d<3;d++){
+          const v=part.current[i+d];if(v<framing.min[d])framing.min[d]=v;
+          else if(v>framing.max[d])framing.max[d]=v;
+        }
+      }
     }
   };
 }

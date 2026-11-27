@@ -1,7 +1,7 @@
 const vertex=`
   attribute vec3 position, normal, color;
   attribute vec2 uv;
-  attribute float photoWeight;
+  attribute float photoWeight, plateMix;
   uniform vec3 pivot;
   uniform vec2 orbit, scale;
   uniform float distanceToCamera;
@@ -10,7 +10,7 @@ const vertex=`
   varying vec3 shadowPoint;
   varying vec2 tex;
   varying vec3 albedo, viewNormal, viewPosition;
-  varying float coverage;
+  varying float coverage, alternate;
   vec3 rotateModel(vec3 p){
     float cy=cos(orbit.x),sy=sin(orbit.x),cp=cos(orbit.y),sp=sin(orbit.y);
     vec3 q=vec3(cy*p.x+sy*p.z,p.y,-sy*p.x+cy*p.z);
@@ -24,18 +24,18 @@ const vertex=`
     vec3 shadowClip=vec3(lightView.xy,-lightView.z);
     shadowPoint=shadowClip*.5+.5;
     if(shadowPass>.5)gl_Position=vec4(shadowClip,1.);
-    tex=uv;albedo=color;coverage=photoWeight;viewNormal=rotateModel(normal);viewPosition=p;
+    tex=uv;alternate=plateMix;albedo=color;coverage=photoWeight;viewNormal=rotateModel(normal);viewPosition=p;
   }`;
 const fragment=`
   precision highp float;
   uniform sampler2D photograph,depthMap;
-  uniform float shadowPass,shadowTexel;
+  uniform float shadowPass,shadowTexel,plateOffset;
   varying vec3 shadowPoint;
   uniform vec3 keyLight;
   uniform float lightMode, wire, distanceToCamera;
   varying vec2 tex;
   varying vec3 albedo, viewNormal, viewPosition;
-  varying float coverage;
+  varying float coverage, alternate;
   void main(){
     if(shadowPass>.5){
       vec3 pack=fract(gl_FragCoord.z*vec3(1.,255.,65025.));
@@ -43,7 +43,13 @@ const fragment=`
       gl_FragColor=vec4(pack,1.);return;
     }
     if(wire>.5){gl_FragColor=vec4(.66,.92,.82,.53);return;}
-    vec3 base=mix(albedo,texture2D(photograph,clamp(tex,0.,1.)).rgb,clamp(coverage,0.,1.));
+    vec3 projected=texture2D(photograph,clamp(tex,0.,1.)).rgb;
+    if(alternate>.001){
+      vec3 sleeve=texture2D(photograph,clamp(tex+vec2(plateOffset,0.),0.,1.)).rgb;
+      projected=mix(projected,sleeve,min(alternate,1.));
+      if(alternate>1.)projected=mix(sleeve,texture2D(photograph,clamp(tex+vec2(2.*plateOffset,0.),0.,1.)).rgb,alternate-1.);
+    }
+    vec3 base=mix(albedo,projected,clamp(coverage,0.,1.));
     vec3 n=normalize(viewNormal);
     vec3 v=normalize(vec3(0.,0.,distanceToCamera)-viewPosition);
     if(dot(n,v)<0.)n=-n;
@@ -110,8 +116,8 @@ export function renderer3D(canvas){
   const shadows=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE0);
   const attrib={},uniform={};
-  for(const key of ['position','normal','uv','color','photoWeight'])attrib[key]=gl.getAttribLocation(program,key);
-  for(const key of ['orbit','pivot','scale','distanceToCamera','keyLight','lightMode','wire','shadowPass','shadowTexel','lightSpace','inverseExtent'])uniform[key]=gl.getUniformLocation(program,key);
+  for(const key of ['position','normal','uv','color','photoWeight','plateMix'])attrib[key]=gl.getAttribLocation(program,key);
+  for(const key of ['orbit','pivot','scale','distanceToCamera','keyLight','lightMode','wire','shadowPass','shadowTexel','lightSpace','inverseExtent','plateOffset'])uniform[key]=gl.getUniformLocation(program,key);
   gl.uniform1i(gl.getUniformLocation(program,'photograph'),0);gl.uniform1i(gl.getUniformLocation(program,'depthMap'),1);
   gl.enable(gl.DEPTH_TEST);gl.clearColor(0,0,0,0);
   function buffer(target,data,dynamic=false){
@@ -127,14 +133,14 @@ export function renderer3D(canvas){
       if(Id===Uint32Array&&!gl.getExtension('OES_element_index_uint'))throw Error('Index format unavailable');
       const faces=Id.from(p.indices),lines=new Id(faces.length*2);
       for(let i=0;i<faces.length;i+=3){const a=faces[i],b=faces[i+1],c=faces[i+2];lines.set([a,b,b,c,c,a],i*2);}
-      const buffers=[buffer(A,p.current,true),buffer(A,p.normals,true),buffer(A,p.uv),buffer(A,p.colors),buffer(A,p.photoWeight),buffer(E,faces),buffer(E,lines)];
+      const buffers=[buffer(A,p.current,true),buffer(A,p.normals,true),buffer(A,p.uv),buffer(A,p.colors),buffer(A,p.photoWeight),buffer(A,p.plateMix||new Float32Array(p.photoWeight.length)),buffer(E,faces),buffer(E,lines)];
       groups.push({p,buffers,texture:albedoTexture(p.texture||model.photo),fmt:Id===Uint16Array?gl.UNSIGNED_SHORT:gl.UNSIGNED_INT});
     }
   }
   function render(view,wire){
     const w=canvas.width,h=canvas.height;
     gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);if(!model)return;
-    const {min,max}=model,extent=max.map((n,i)=>Math.max(.015,n-min[i]));
+    const {min,max}=model.framing||model,extent=max.map((n,i)=>Math.max(.015,n-min[i]));
     const width=Math.max(extent[0],extent[2]*.94),height=extent[1],radius=Math.max(width,height)*.54;
     const scale=Math.min(1.77/width,1.81*h/(w*height))*view.zoom;
     gl.uniform3f(uniform.pivot,(min[0]+max[0])/2,(min[1]+max[1])/2,(min[2]+max[2])/2);
@@ -150,13 +156,13 @@ export function renderer3D(canvas){
     gl.uniform1f(uniform.shadowTexel,shadows?1/shadowSize:0);
     gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);
     function drawGroup(g,line,upload=false){
-      const {buffers,p,fmt}=g;gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.texture);
-      for(const [i,[key,size]] of [['position',3],['normal',3],['uv',2],['color',3],['photoWeight',1]].entries()){
+      const {buffers,p,fmt}=g;gl.uniform1f(uniform.plateOffset,p.plateOffset||0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.texture);
+      for(const [i,[key,size]] of [['position',3],['normal',3],['uv',2],['color',3],['photoWeight',1],['plateMix',1]].entries()){
         gl.bindBuffer(gl.ARRAY_BUFFER,buffers[i]);
         if(upload&&i<2)gl.bufferSubData(gl.ARRAY_BUFFER,0,i===0?p.current:p.normals);
         gl.enableVertexAttribArray(attrib[key]);gl.vertexAttribPointer(attrib[key],size,gl.FLOAT,false,0,0);
       }
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,buffers[line?6:5]);gl.drawElements(line?gl.LINES:gl.TRIANGLES,p.indices.length*(line?2:1),fmt,0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,buffers[line?7:6]);gl.drawElements(line?gl.LINES:gl.TRIANGLES,p.indices.length*(line?2:1),fmt,0);
     }
     gl.uniform1f(uniform.wire,0);
     if(shadows){

@@ -1,5 +1,5 @@
-import {buildSculpture} from './sculpture.mjs?v=34aebac239';
-import {renderer3D} from './renderer3d.mjs?v=7705098ff3';
+import {buildSculpture} from './sculpture.mjs?v=7ba46ec6c5';
+import {renderer3D} from './renderer3d.mjs?v=302c517ec8';
 
 export function makeSurface(canvas,redraw){
   const ctx=canvas.getContext('2d',{alpha:false}),layer=document.createElement('canvas');

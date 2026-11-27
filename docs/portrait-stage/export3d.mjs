@@ -38,9 +38,12 @@ async function blendMap(part,src,ids){
     for(let y=0;y<step;y++)for(let x=0;x<step;x++){
       let B=Math.max(0,(x+.5-pad)/span),C=Math.max(0,(y+.5-pad)/span),A=Math.max(0,1-(x+.5-pad)/span-(y+.5-pad)/span);const sum=A+B+C;A/=sum;B/=sum;C/=sum;
       const u=part.uv[a*2]*A+part.uv[b*2]*B+part.uv[c*2]*C,v=part.uv[a*2+1]*A+part.uv[b*2+1]*B+part.uv[c*2+1]*C;
-      const px=Math.max(0,Math.min(w-1,Math.round(u*(w-1)))),py=Math.max(0,Math.min(h-1,Math.round(v*(h-1)))),pk=(py*w+px)*4;
+      const px=Math.max(0,Math.min(w-1,Math.round(u*(w-1)))),py=Math.max(0,Math.min(h-1,Math.round(v*(h-1))));
+      const mix=part.plateMix?part.plateMix[a]*A+part.plateMix[b]*B+part.plateMix[c]*C:0;
+      const offset=Math.round(w*(part.plateOffset||0));
+      const first=4*(py*w+Math.min(w-1,px+Math.floor(mix)*offset)),second=4*(py*w+Math.min(w-1,px+Math.ceil(mix)*offset)),fraction=mix-Math.floor(mix);
       const f=Math.max(0,Math.min(1,part.photoWeight[a]*A+part.photoWeight[b]*B+part.photoWeight[c]*C)),dst=((top+y)*W+left+x)*4;
-      for(let k=0;k<3;k++)out[dst+k]=pixels[pk+k]*f+255*(1-f)*(part.colors[a*3+k]*A+part.colors[b*3+k]*B+part.colors[c*3+k]*C);
+      for(let k=0;k<3;k++)out[dst+k]=(pixels[first+k]+fraction*(pixels[second+k]-pixels[first+k]))*f+255*(1-f)*(part.colors[a*3+k]*A+part.colors[b*3+k]*B+part.colors[c*3+k]*C);
       out[dst+3]=255;
     }
     if(t%512===511)await wait();
@@ -70,7 +73,8 @@ export async function exportSculpture(model){
     const pure=[],mixed=[],solid=[],src=p.texture||model.photo,primitives=[];
     for(let i=0;i<p.indices.length;i+=3){
       const a=p.indices[i],b=p.indices[i+1],c=p.indices[i+2],w=p.photoWeight;
-      const group=Math.min(w[a],w[b],w[c])>=.998?pure:Math.max(w[a],w[b],w[c])<.002?solid:mixed;
+      const hasOverlay=p.plateMix&&Math.max(p.plateMix[a],p.plateMix[b],p.plateMix[c])>.001;
+      const group=!hasOverlay&&Math.min(w[a],w[b],w[c])>=.998?pure:Math.max(w[a],w[b],w[c])<.002?solid:mixed;
       group.push(a,c,b);
     }
     for(const ids of [pure,mixed,solid]){

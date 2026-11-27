@@ -1,6 +1,6 @@
 import {detectPortrait,startTracking} from '../tracking.mjs?v=188cd72e71';
-import {clamp,resting,faceSignal,relativePose,manualFace,handPoints,retargetHand,manualHand,faceGeometry} from './rig.mjs?v=bc3d730eb9';
-import {makeSurface} from './surface.mjs?v=38a6aead7f';
+import {clamp,resting,faceSignal,relativePose,manualFace,handPoints,retargetHand,manualHand,faceGeometry} from './rig.mjs?v=89492089b3';
+import {makeSurface} from './surface.mjs?v=03965335f2';
 import {tr} from './strings.mjs?v=fb4e2e0551';
 import {bodyMotion} from './body.mjs?v=42762d866d';
 import {closeFace,faceRegion,faceBox,refinedFace,tracedHand,rigHands,smoothPose,smoothPoints} from './anatomy.mjs?v=946a6ad1ea';
@@ -159,7 +159,7 @@ $('glb').onclick=async()=>{
   if(loading||!rig||!surface.sculpture||exportPending)return;
   exportPending=true;sync();const instance=surface.sculpture;const frame=structuredClone(poseForFrame());
   const name=source.type==='sample'?tr('sampleName'):source.name;
-  try{const {exportSculpture}=await import('./export3d.mjs?v=51a56742b9');instance.update(frame);
+  try{const {exportSculpture}=await import('./export3d.mjs?v=6805eaab40');instance.update(frame);
     const blob=await exportSculpture(instance),url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=name.slice(0,70)+' — Portrait Loom.glb';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);flash('glbDone');
   }catch{flash('glbError');}finally{exportPending=false;sync();paintSoon();}

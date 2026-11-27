@@ -222,15 +222,21 @@ export function buildHead3D(input){
       if(prev.length)stitch(sign>0?prev:ring,sign>0?ring:prev);else{const xy=project(sign*(atEar(ey,ez)-.009),ey);closeRing(sign>0?[...ring].reverse():ring,vertex([...xy,ez*W],xy,skin.map(x=>x*.70),0));}prev=ring;}
     const q=project(sign*(atEar(ey,ez)-.072),ey);closeRing(sign>0?prev:[...prev].reverse(),vertex([...q,ez*W],q,skin,0));}
   // Connect the lower skull directly to the measured shoulder bar. Pose-only uploads have no separate face-derived collar.
-  const chin=local(P[152]),S=44;let neck=[];const bodyLandmarks=input.pose?.landmarks;
+  const chin=local(P[152]),S=48;let neck=[];const bodyLandmarks=input.pose?.landmarks;
   const bar=bodyLandmarks?.[11]&&bodyLandmarks?.[12]?average([bodyLandmarks[11].x,bodyLandmarks[11].y*aspect],[bodyLandmarks[12].x,bodyLandmarks[12].y*aspect]):null;
-  const neckBase=bar?local(bar):[chin[0],chin[1]+.37],neckTopY=Math.min(chin[1]-.30,headCenter[1]+.17),neckBottomY=clamp(neckBase[1]+.13,chin[1]+.18,chin[1]+1.45);
-  for(let j=0;j<=12;j++){const t=j/12,ring=[],slide=ease(t),width=.219+.022*t+.092*t**4,depth=.249+.048*t,centerX=mix(chin[0],neckBase[0],slide),level=mix(neckTopY,neckBottomY,t),centerZ=mix(-.31,-.255,slide);
+  const neckBase=bar?local(bar):[chin[0],chin[1]+.37],neckTopY=Math.min(chin[1]-.30,headCenter[1]+.17),neckBottomY=input.joinNeck&&bar&&neckBase[1]>chin[1]+.12?chin[1]-.055:clamp(neckBase[1]+.13,chin[1]+.18,chin[1]+1.45);
+  let neckRadius=.28;
+  if(input.joinNeck&&maskWorks){
+    const cut=chin[1]+.075;
+    const widths=[-1,1].map(sign=>{let r=.14;for(;r<.48;r+=.008)if(matte(project(chin[0]+sign*r,cut))<.5)break;return r;});
+    neckRadius=clamp((widths[0]+widths[1])*.5,.235,.38);
+  }
+  for(let j=0;j<=12;j++){const t=j/12,ring=[],slide=ease(t),width=mix(.225,neckRadius,slide)+(input.joinNeck?0:.092)*t**4,depth=.249+.028*t,centerX=mix(chin[0],neckBase[0],slide),level=mix(neckTopY,neckBottomY,t),centerZ=mix(-.31,-.255,slide);
     for(let i=0;i<S;i++){const a=i*tau/S,fx=Math.cos(a),fz=Math.sin(a),x=centerX+fx*width,y=level+.047*fx*fx*t-.028*fz*(1-t),xy=project(x,y),q=[...xy,(centerZ+fz*depth)*W],channel={neck:t};
       const donor=project(x,Math.max(chin[1]+.012,y)),shade=.90+.068*t+.04*Math.abs(fx),col=skin.map(c=>unit(c*shade));
-      const weight=ease((fz-.25)/.55)*(within(donor)&&(!maskWorks||matte(donor)>.49)?1:0);ring.push(vertex(q,donor,col,weight,channel));}
+      const weight=ease((fz+.02)/.48)*(within(donor)&&(!maskWorks||matte(donor)>.49)?1:0);ring.push(vertex(q,donor,col,weight,channel));}
     const center=project(centerX,level),center3=[...center,centerZ*W];if(neck.length)stitch(ring,neck);else closeRing(ring,vertex(center3,center,skin,0,{neck:0}));neck=ring;
-    if(j===12)closeRing([...neck].reverse(),vertex(center3,center,skin,0,{neck:1}));}
+    if(j===12&&!input.joinNeck)closeRing([...neck].reverse(),vertex(center3,center,skin,0,{neck:1}));}
   // Make the inner bottom lip follow the jaw hinge without dragging the upper lip into the aperture.
   const lowerLip=[95,88,178,87,14,317,402,318,324,17,84,314,181,405,91,321];
   for(const id of lowerLip){const ch=channels[id];ch.jaw=Math.max(ch.jaw,.94*ease((1.15-Math.abs((ch.x-mouth[0])/mw))/.57));}
@@ -258,10 +264,11 @@ export function buildHead3D(input){
         const open=jaw*p.jaw*(p.shellJaw??1)*.32;
         if(open){const y0=y+W*.055,z0=z+W*.045,c=Math.cos(open),s=Math.sin(open);y=y0*c+z0*s-W*.055;z=z0*c-y0*s-W*.045;}}
       const x1=cy*x+sy*z,z1=cy*z-sy*x,y1=ct*y+st*z1,z2=ct*z1-st*y;
-      const neckInfluence=p?.neck===undefined?1:1-ease((p.neck-.12)/.64);
+      const neckInfluence=p?.neck===undefined?1:input.joinNeck?1-.30*ease(p.neck):1-ease((p.neck-.12)/.64);
       const rx=mix(x,cr*x1-sr*y1,neckInfluence),ry=mix(y,sr*x1+cr*y1,neckInfluence),ix=cs*rx-sn*ry,iy=sn*rx+cs*ry;
       out[j]=pivotXY[0]+bodyDX+(ix*torsoC-iy*torsoS)*bodyScale;out[j+1]=pivotXY[1]+bodyDY+(iy*torsoC+ix*torsoS)*bodyScale;out[j+2]=pivotZ+mix(z,z2+depth,neckInfluence)+bodyDZ;
     }return out;
   }
-  return {positions,uv,colors,photoWeight,indices,pose,texture,estimated:!!face.estimated};
+  const centroid=neck.reduce((c,i)=>c.map((v,d)=>v+positions[i*3+d]/S),[0,0,0]);
+  return {neckRing:neck,neckCenter:{x:centroid[0],y:centroid[1],z:centroid[2]},neckWidth:W*neckRadius,neckDepth:W*.277,positions,uv,colors,photoWeight,indices,pose,texture,estimated:!!face.estimated};
 }
