@@ -45,7 +45,7 @@ export function smoothPose(previous,target,dt,missing=false){
   }return result;
 }
 export function smoothPoints(prev,next,dt){if(!prev||prev.length!==next.length)return next;return next.map((p,i)=>{const a=prev[i],change=dist(a,p);const t=1-Math.exp(-clip(dt,.001,.18)/(.087/(1+14*change)));const point={x:a.x+(p.x-a.x)*t,y:a.y+(p.y-a.y)*t};
-    for(const key of ['z','dz'])if(Number.isFinite(p[key])||Number.isFinite(a[key]))point[key]=(a[key]||0)+((p[key]||0)-(a[key]||0))*t;
+    for(const key of ['z','dz','mx','my','mz'])if(Number.isFinite(p[key])||Number.isFinite(a[key]))point[key]=(a[key]||0)+((p[key]||0)-(a[key]||0))*t;
     return point;});}
 export function handInfluence(p,hand,active,span){
   // Bind each non-palm point to its nearest finger segment. Adjacent fingers can articulate independently.

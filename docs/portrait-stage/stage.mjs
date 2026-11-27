@@ -1,12 +1,13 @@
-import {detectPortrait,startTracking} from '../tracking.mjs?v=e3e9fc301c';
-import {clamp,resting,faceSignal,relativePose,manualFace,handPoints,retargetHand,manualHand,faceGeometry} from './rig.mjs?v=e5bfa728ed';
-import {makeSurface} from './surface.mjs?v=904564df3c';
-import {tr} from './strings.mjs?v=14627d2c6b';
+import {detectPortrait,startTracking} from '../tracking.mjs?v=94cb3e1524';
+import {clamp,resting,faceSignal,relativePose,manualFace,handPoints,retargetHand,manualHand,faceGeometry} from './rig.mjs?v=312b69303f';
+import {makeSurface} from './surface.mjs?v=8758120c1e';
+import {tr} from './strings.mjs?v=e407d86f73';
 import {bodyMotion} from './body.mjs?v=42762d866d';
-import {closeFace,faceRegion,faceBox,refinedFace,tracedHand,rigHands,smoothPose,smoothPoints} from './anatomy.mjs?v=946a6ad1ea';
+import {closeFace,faceRegion,faceBox,refinedFace,tracedHand,rigHands,smoothPose,smoothPoints} from './anatomy.mjs?v=03e95be4b5';
 import {gifHeader,bmpSize,heifHeader} from './containers.mjs?v=28916c7123';
 import {cropRearPhoto,projectRearPhoto} from './rear-photo.mjs?v=fb07844c46';
 import {dimensions,fits} from './photo.mjs?v=a7fc521aa8';
+import {installComparison} from './footage.mjs?v=48c8f09590';
 const $=id=>document.getElementById(id),canvas=$('portrait'),stage=$('dropzone'),video=$('video'),surface=makeSurface(canvas,()=>{sync();paintSoon();});
 const winter={type:'sample',id:'winter-wave'};
 const sampleImages={'winter-wave':'../assets/winter-wave.webp','atelier-1':'../assets/portrait-model.webp'};
@@ -65,6 +66,8 @@ function sync(){
   $('moving').setAttribute('aria-pressed',String(!raw));$('original').setAttribute('aria-pressed',String(raw));$('mesh').setAttribute('aria-pressed',String(mesh));
   $('portrait').setAttribute('aria-label',tr(raw?'originalStage':'animatedStage'));$('thumbnail').alt=tr('photoAlt');$('anchorBtn').disabled=loading||!!pick;$('cancelAnchor').hidden=!pick;$('useExample').hidden=isWinter(source);$('download').disabled=!photo||loading||!!pick;canvas.toggleAttribute('data-picking',!!pick);
   const model=surface.sculpture,modelVisible=!!model&&surface.available&&!pick&&!raw;
+  const wrists=model?.parts.find(part=>part.name==='Figure')?.wristBindings;
+  $('compareTools').hidden=!isWinter(source)||!modelVisible||!detected.face||!wrists?.[15]||!wrists?.[16]||!references||anchors.length>0||!!subjectRegion||loading;
   $('renderDesk').hidden=!modelVisible;$('glb').disabled=!model||loading||exportPending;$('glb').textContent=tr(exportPending?'baking':'glb');
   document.querySelectorAll('[data-angle]').forEach(b=>b.setAttribute('aria-pressed',String(Math.abs(((view.yaw-Number(b.dataset.angle)+540)%360)-180)<.5)));
   $('orbit').value=view.yaw;$('orbitValue').value=Math.round(view.yaw)+'°';
@@ -143,7 +146,7 @@ async function openSource(src,marks=[],savedControls={},savedGain=100,held=null,
   try{const img=await decode(sourceURL(src));checkPhoto(img);if(token!==generation)return;
     backGeneration++;references=null;rearData=null;source=src;view=defaultView();savedBaseline=null;photo=img;aspect=img.naturalHeight/img.naturalWidth;anchors=marks;allFaces=[];subjectRegion=targeting.region||null;subjectPoint=targeting.point||null;handMarks=targeting.hands||[];detected={face:null,hands:[]};raw=false;hold=null;mesh=false;$('thumbnail').src=img.src;
     applyControls(savedControls);$('gain').value=savedGain;$('gain').nextElementSibling.value=savedGain+'%';applyRig();paint();
-    const referenceLoad=isWinter(src)?import('./winter-views.mjs?v=9362d4e02f').then(m=>m.loadWinterViews(decode)).catch(()=>null):Promise.resolve(null);
+    const referenceLoad=isWinter(src)?import('./winter-views.mjs?v=cdb9faa014').then(m=>m.loadWinterViews(decode)).catch(()=>null):Promise.resolve(null);
     let modelError=false,result;try{result=await analyze(img,signal,subjectRegion,subjectPoint);}catch(err){if(signal.aborted)return;modelError=true;}
     let fitted=await referenceLoad;
     if(fitted&&savedRear)fitted={...fitted,rearLayer:await makeRearLayer(savedRear)};
@@ -204,7 +207,7 @@ $('glb').onclick=async()=>{
   exportPending=true;sync();const instance=surface.sculpture;const frame=structuredClone(poseForFrame());
   const name=sourceTitle(source);
   const attribution=isWinter(source)?{copyright:winterCredit,extras:{source:photoPage,license:photoLicense,...(references&&!anchors.length&&!subjectRegion?{references:references.sources,posterior:rearData?'Locally supplied rear head photograph':'Modeled with a direct rear-view visual reference at 02:54; hair and fabric materials reconstructed from TV10 footage',rearReference:'https://www.youtube.com/watch?v=HnmIyCYLmJc&t=174s'}:{}),modifications:'Cropped photograph, reconstructed geometry and texture, posed in Portrait Loom.'}}:null;
-  try{const {exportSculpture}=await import('./export3d.mjs?v=92922ac8cd');instance.update(frame);
+  try{const {exportSculpture}=await import('./export3d.mjs?v=1ee4240916');instance.update(frame);
     const blob=await exportSculpture(instance,attribution),url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=name.slice(0,70)+' — Portrait Loom.glb';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);flash('glbDone');
   }catch{flash('glbError');}finally{exportPending=false;sync();paintSoon();}
@@ -227,12 +230,22 @@ function clearCalibration(){samples=[];sampleStarted=0;baseline=null;neutralHand
 function bindHands(input,videoAspect,time){
   const results=[],used=new Set(),claimed=new Set();
   const hands=input.slice(0,2).map(h=>({h,raw:handPoints(h,videoAspect)}));
+  const previous=[...trackedHands.values()].filter(track=>time-track.seen<400);
+  if(hands.length===2&&previous.length<2){
+    const distance=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y),[a,b]=hands.map(hand=>hand.raw);
+    const width=Math.max(distance(a[5],a[17]),distance(b[5],b[17]));
+    const overlap=[0,5,9,13,17].reduce((sum,k)=>sum+distance(a[k],b[k]),0)/5;
+    if(distance(a[0],b[0])<width*.60&&overlap<width*.90){
+      const keep=previous.length?hands.findIndex(hand=>hand.h.handedness===previous[0].key):0;
+      hands.splice(keep===1?0:1,1);
+    }
+  }
   const keys=['Left','Right'];
   function matchCost({h,raw},key){
     const last=trackedHands.get(key),age=last?time-last.seen:Infinity;
     const wrist=raw[0],mismatch=h.handedness&&h.handedness!==key;
     const penalty=mismatch?(age<220?.013:.32):0;
-    if(age>650)return penalty+Math.abs(wrist.x-(key==='Left'?.7:.3))*.035;
+    if(age>650)return penalty+(previous.length ? .13 : 0)+Math.abs(wrist.x-(key==='Left'?.7:.3))*.035;
     const x=last.points[0].x+last.vx*Math.min(100,age),y=last.points[0].y+last.vy*Math.min(100,age);
     const shape=[5,9,17].reduce((sum,i)=>sum+Math.hypot(raw[i].x-wrist.x-last.points[i].x+last.points[0].x,raw[i].y-wrist.y-last.points[i].y+last.points[0].y),0)/3;
     return penalty+shape*.85+Math.hypot(wrist.x-x,wrist.y-y);
@@ -257,7 +270,14 @@ function bindHands(input,videoAspect,time){
   for(const [key,last] of trackedHands){if(used.has(key))continue;const age=time-last.seen;
     if(age>650||claimed.has(last.source)||results.length>=2)continue;
     const alpha=Math.exp(-Math.max(0,age-125)/160),origin=neutralHands.get(key);if(!origin)continue;
-    const points=last.points.map((p,i)=>({z:(origin[i].z||0)+((p.z||0)-(origin[i].z||0))*alpha,x:origin[i].x+(p.x-origin[i].x)*alpha,y:origin[i].y+(p.y-origin[i].y)*alpha+(last.source<0&&!surface.sculpture?.inferredPalms?.some(Boolean)?(1-alpha)*videoAspect:0)}));results.push({...last,points});}
+    const points=last.points.map((p,i)=>{
+      const q={};for(const channel of ['x','y','z','mx','my','mz']){
+        if(Number.isFinite(p[channel])&&Number.isFinite(origin[i][channel]))q[channel]=origin[i][channel]+(p[channel]-origin[i][channel])*alpha;
+      }
+      if(last.source<0&&!surface.sculpture?.inferredPalms?.some(Boolean))q.y+=(1-alpha)*videoAspect;
+      return q;
+    });
+    results.push({...last,points});}
   return results;
 }
 function onFrame(frame){if(!cameraSession||!rig)return;
@@ -353,3 +373,5 @@ async function restore(saved){await ready;const fail=()=>{throw Error(tr('badPro
 }
 ready=openSource(winter).catch(()=>{});
 window.NightLibrary?.register({getState:async()=>{await ready;if(loading||!photo)throw Error(tr('busy'));return {version:4,...(rearData?{rearPhoto:rearData}:{}),view:{...view},source:{...source},anchors,targeting:{region:subjectRegion,point:subjectPoint?{x:subjectPoint.x,y:subjectPoint.y}:null,hands:handMarks},bodyGain:Number($('bodyGain').value),manual:allControls(),gain:Number($('gain').value),raw,mesh,held:hold?structuredClone(hold):null,neutral:baseline||savedBaseline};},restore,getTitle:()=>sourceTitle(source),getPreview:preview});
+
+installComparison({surface,refresh:paintSoon,context:()=>({aspect,palms:rig.palms,inferred:surface.sculpture.inferredPalms,landmarks:detected.pose.landmarks,model:surface.sculpture})});

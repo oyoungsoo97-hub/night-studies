@@ -39,3 +39,21 @@ test('the palm and its five fingers share a closed, consistently wound surface',
   while(queue.length){const p=queue.pop();if(reached.has(p))continue;reached.add(p);queue.push(...neighbors.get(p));}
   assert.equal(reached.size,neighbors.size);
 });
+
+test('the whole hand surface follows a rigid turn about the wrist',()=>{
+  const landmarks=openPalm(),source=photoHand(landmarks),w=source[0],angle=1.13;
+  const turn=p=>{
+    const x=p.x-w.x,z=p.z-w.z;
+    return {x:w.x+x*Math.cos(angle)+z*Math.sin(angle),y:p.y,z:w.z+z*Math.cos(angle)-x*Math.sin(angle)};
+  };
+  const targets=source.map((s,i)=>{const p=turn(s);return {...p,dz:p.z-source[i].z,measured:true};});
+  const mesh=buildFigure3D({aspect:1,hands:[{landmarks}]});
+  const posed=mesh.pose({targets:[targets]});
+  const origin=turn({x:mesh.positions[0],y:mesh.positions[1],z:mesh.positions[2]});
+  let worst=0;
+  for(let i=0;i<posed.length;i+=3){
+    const expected=turn({x:mesh.positions[i],y:mesh.positions[i+1],z:mesh.positions[i+2]});
+    worst=Math.max(worst,Math.hypot(posed[i]-posed[0]-expected.x+origin.x,posed[i+1]-posed[1]-expected.y+origin.y,posed[i+2]-posed[2]-expected.z+origin.z));
+  }
+  assert.ok(worst<.0001,`palm and finger cross-section displacement ${worst}`);
+});

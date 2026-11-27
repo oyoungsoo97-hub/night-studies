@@ -1,4 +1,4 @@
-import {analysePortrait} from './photo-analysis.mjs?v=50bd6e5844';
+import {analysePortrait} from './photo-analysis.mjs?v=083466401c';
 
 // Both studios share one loader. Media stays on the device, including still-image analysis.
 const assets = new URL('./assets/hands/', import.meta.url);
@@ -57,7 +57,7 @@ async function createTask(kind, mode, signal) {
   return result;
 }
 function readHands(result) {
-  return (result?.landmarks || []).map((landmarks,i)=>({landmarks,handedness:result.handedness?.[i]?.[0]?.categoryName || ''}));
+  return (result?.landmarks || []).map((landmarks,i)=>({landmarks,worldLandmarks:result.worldLandmarks?.[i],handedness:result.handedness?.[i]?.[0]?.categoryName || ''}));
 }
 function readFace(result) {
   if (!result?.faceLandmarks?.length) return null;

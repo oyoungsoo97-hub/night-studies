@@ -1,4 +1,4 @@
-import {handInfluence} from './anatomy.mjs?v=946a6ad1ea';
+import {handInfluence} from './anatomy.mjs?v=03e95be4b5';
 // Positions are in photo-width units so rotation and distance preserve pixel proportions.
 export const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const hypot=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -6,7 +6,7 @@ const mix=(a,b,t)=>a+(b-a)*t;
 const mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
 const ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 const gauss=(x,y,sx,sy)=>Math.exp(-.5*((x/sx)**2+(y/sy)**2));
-import {driveHand,curlHand} from './hand3d.mjs?v=b57fe028e9';
+import {driveHand,curlHand,handPoints} from './hand3d.mjs?v=649a3cd4e5';
 export {driveHand as retargetHand,curlHand as manualHand};
 const radians=v=>Math.atan2(Math.sin(v),Math.cos(v));
 export function resting(){return {browL:0,browR:0,blinkL:0,blinkR:0,jaw:0,roll:0,yaw:0,pitch:0,hands:0,smileL:0,smileR:0,pucker:0,gazeX:0,gazeY:0,depth:0};}
@@ -85,7 +85,7 @@ function triangulate(points,aspect){
   }
   return new Uint16Array(tris.filter(t=>t.ids.every(i=>i<n)).flatMap(t=>t.ids));
 }
-export function handPoints(hand,aspect){return hand.landmarks.map(pt=>({x:pt.x,y:pt.y*aspect,z:pt.z??0}));}
+export {handPoints} from './hand3d.mjs?v=649a3cd4e5';
 function buildFaceWeights(p,face,aspect){
   if(!face?.landmarks?.[454])return null;
   const L=face.landmarks,at=i=>({x:L[i].x,y:L[i].y*aspect}),left=at(33),right=at(263),origin=mid(left,right);

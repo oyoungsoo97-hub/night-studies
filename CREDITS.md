@@ -14,6 +14,12 @@
 
 **Deutsch.** Sechs Standbilder und eine Gehsequenz von TV10 beim Polo-Ralph-Lauren-Termin am 26. März 2025 dienten zur Anpassung der Gesichtstiefe und der Kopfform. Die Fotos wurden zugeschnitten, farblich angeglichen und auf das Modell projiziert. Eine Rückansicht im Newsen-Bericht diente als Vorlage für die Wellen im Nacken, den Zopf über der rechten Schulter und den Hemdschnitt. Haar- und Stofftexturen stammen aus dem Material von TV10.
 
+비교 화면의 고개 돌리기(00:27.311–00:32.983)와 손가락 하트(01:09.403–01:15.208)는 아래 TV10 영상을 잘라 무음으로 만든 발췌본입니다. 같은 프레임에서 관절 궤적을 구했고, 목·어깨와 양손의 재질은 원본에서 따로 추출했습니다.
+
+The comparison player uses two cropped, muted excerpts from the TV10 film. The motion tracks and photographic neck, shoulder and palm textures were derived from the same recording.
+
+Der Vergleich verwendet zwei beschnittene, stumme Ausschnitte aus dem TV10-Film. Die Bewegungsdaten und die Fototexturen für Hals, Schulter und Hände stammen aus derselben Aufnahme.
+
 티비텐 (TV10) · [Film](https://www.youtube.com/watch?v=4j6nJVVj1hk) · [P1](https://commons.wikimedia.org/?curid=162907815) · [P2](https://commons.wikimedia.org/?curid=162907797) · [P3](https://commons.wikimedia.org/?curid=162907800) · [P4](https://commons.wikimedia.org/?curid=162907799) · [P5](https://commons.wikimedia.org/?curid=162907803) · [P6](https://commons.wikimedia.org/?curid=162907806) · [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). [후면 참고 영상 · Rear-view reference · Rückansicht: Newsen, 2:54](https://www.youtube.com/watch?v=HnmIyCYLmJc&t=174s)
 
 ## MediaPipe · 얼굴·손·몸 추적 · Gesichts-, Hand- und Körpertracking

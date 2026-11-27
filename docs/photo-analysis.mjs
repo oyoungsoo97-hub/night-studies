@@ -1,7 +1,7 @@
 // Detection views preserve their inverse transform so every result refers to the original photograph.
 const clamp=(v,lo=0,hi=1)=>Math.min(hi,Math.max(lo,v));
 const full={x:0,y:0,width:1,height:1};
-const direct={toPhoto:p=>p,fromPhoto:p=>p};
+const direct={toPhoto:p=>p,fromPhoto:p=>p,worldToPhoto:p=>p};
 const waitFrame=()=>new Promise(resolve=>setTimeout(resolve,0));
 function check(signal){if(signal?.aborted)throw new DOMException('Cancelled','AbortError');}
 function box(x,y,w,h){
@@ -30,6 +30,7 @@ function view(image,rect,rotation=0,enhance=false){
   ctx.fillStyle='#777';ctx.fillRect(0,0,side,side);ctx.translate(side/2,side/2);ctx.rotate(rotation);ctx.scale(scale,scale);
   if(enhance)ctx.filter='contrast(1.35) brightness(1.14)';ctx.drawImage(image,rect.x*w,rect.y*h,sw,sh,-sw/2,-sh/2,sw,sh);
   return {image:canvas,
+    worldToPhoto(p){return {...p,x:c*p.x+s*p.y,y:-s*p.x+c*p.y};},
     toPhoto(p){const dx=(p.x-.5)*side/scale,dy=(p.y-.5)*side/scale;return {...p,x:(cx+c*dx+s*dy)/w,y:(cy-s*dx+c*dy)/h,z:(p.z||0)*side/(scale*w)};},
     fromPhoto(p){const dx=p.x*w-cx,dy=p.y*h-cy;return {x:.5+(c*dx-s*dy)*scale/side,y:.5+(s*dx+c*dy)*scale/side};}
   };
@@ -127,7 +128,7 @@ export async function analysePortrait(image,createTask,{signal,region,point,pose
       if(!inside(anchor,full))return;
       const span=Math.hypot(l[5].x-l[17].x,(l[5].y-l[17].y)*aspect);
       if(seenHands.some(hand=>Math.hypot(anchor.x-hand.landmarks[9].x,(anchor.y-hand.landmarks[9].y)*aspect)<Math.max(.009,span*.74)))return;
-      seenHands.push({landmarks:l,handedness:result.handedness?.[i]?.[0]?.categoryName||''});
+      seenHands.push({landmarks:l,worldLandmarks:result.worldLandmarks?.[i]?.map(input.worldToPhoto),handedness:result.handedness?.[i]?.[0]?.categoryName||''});
     });
   }
   try{

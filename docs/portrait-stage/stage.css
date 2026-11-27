@@ -21,3 +21,15 @@
 #backDialog label {display:grid;grid-template-columns:38% 1fr;align-items:center;gap:.6rem;margin:.75rem 0}.back-actions{display:flex;justify-content:flex-end;gap:.8rem;margin-top:1rem}
 
 .angle-shortcuts{display:flex;gap:3px}.angle-shortcuts button{font:inherit;font-size:.8rem;background:transparent;color:#392e3b;border:1px solid #a99ba4;border-radius:.3rem;padding:.32rem .5rem;cursor:pointer}.angle-shortcuts button[aria-pressed=true]{color:#fff;background:#4e4050;border-color:#4e4050}
+
+#compareTools{padding:.6rem 1.25rem 0}
+#filmDialog{width:min(1180px,94vw);max-width:none;max-height:92dvh;overflow:auto;padding:clamp(14px,2.4vw,32px);border:1px solid #70616f;border-radius:12px;background:#f4efe8;color:#332b31}
+#filmDialog::backdrop{background:#1b141fd9}
+.film-head,.film-controls,.film-bottom{display:flex;align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap}
+.film-head h2{font:500 clamp(21px,3vw,32px)/1.2 Georgia,serif;margin:0}
+.film-controls{justify-content:flex-start;margin:1.2rem 0}.film-controls label{display:flex;align-items:center;gap:.5rem}
+.film-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(4px,1vw,14px)}
+.film-pair figure{min-width:0;margin:0}.film-pair figcaption{font-size:.86rem;font-weight:650;margin-bottom:.4rem}
+.film-pair video,.film-pair canvas{display:block;width:100%;aspect-ratio:640/432;height:auto;background:#38454c;border-radius:4px}
+.film-bottom .view-control{display:flex;align-items:center;gap:.6rem}.film-bottom p,#filmDialog small{font-size:.8rem;line-height:1.45}
+@media(max-width:580px){.film-bottom{gap:0}.film-pair figcaption{font-size:.7rem}.film-controls{gap:.6rem}.film-controls label{font-size:.8rem}.film-pair{gap:3px}#filmDialog{width:98vw;padding:10px}}

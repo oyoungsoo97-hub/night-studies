@@ -1,5 +1,5 @@
-import {buildSculpture} from './sculpture.mjs?v=8e15ddcd4b';
-import {renderer3D} from './renderer3d.mjs?v=449ce66ea9';
+import {buildSculpture} from './sculpture.mjs?v=a6a1a838ac';
+import {renderer3D} from './renderer3d.mjs?v=31d89227b7';
 
 export function makeSurface(canvas,redraw){
   const ctx=canvas.getContext('2d',{alpha:false}),layer=document.createElement('canvas');
@@ -20,9 +20,10 @@ export function makeSurface(canvas,redraw){
       ctx.fillStyle='#fff';ctx.font='bold '+Math.max(12,w*.018)+'px sans-serif';ctx.strokeText(String(index+1),x+7,y-6);ctx.fillText(String(index+1),x+7,y-6);
     }ctx.restore();
   }
-  function draw(frame,w,h){
+  function draw(frame,w,h,target=canvas){
+    const ctx=target.getContext('2d',{alpha:false});
     if(!photo)return;
-    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+    if(target.width!==w||target.height!==h){target.width=w;target.height=h;}
     if(frame.raw||!engine||!model){
       ctx.drawImage(photo,0,0,w,h);photoGuides(frame,w,h);return;
     }

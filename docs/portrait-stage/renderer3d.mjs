@@ -1,14 +1,15 @@
 const vertex=`
-  attribute vec3 position, normal, color;
+  attribute vec3 position, normal, color, referenceUV;
   attribute vec2 uv;
   attribute float photoWeight, plateMix;
   uniform vec3 pivot;
-  uniform vec2 orbit, scale;
+  uniform vec2 orbit, scale, filmOffset;
   uniform float distanceToCamera;
   uniform mat3 lightSpace;
   uniform float inverseExtent, shadowPass;
   varying vec3 shadowPoint;
   varying vec2 tex;
+  varying vec3 sidePlate;
   varying vec3 albedo, viewNormal, viewPosition;
   varying float coverage, alternate;
   vec3 rotateModel(vec3 p){
@@ -20,11 +21,12 @@ const vertex=`
     vec3 p=rotateModel(position-pivot);
     float w=max(.35,1.0-p.z/distanceToCamera);
     gl_Position=vec4(p.x*scale.x,-p.y*scale.y,-p.z/distanceToCamera,w);
+    gl_Position.xy+=filmOffset*w;
     vec3 lightView=(lightSpace*p)*inverseExtent;
     vec3 shadowClip=vec3(lightView.xy,-lightView.z);
     shadowPoint=shadowClip*.5+.5;
     if(shadowPass>.5)gl_Position=vec4(shadowClip,1.);
-    tex=uv;alternate=plateMix;albedo=color;coverage=photoWeight;viewNormal=rotateModel(normal);viewPosition=p;
+    tex=uv;sidePlate=vec3(referenceUV.xy*referenceUV.z,referenceUV.z);alternate=plateMix;albedo=color;coverage=photoWeight;viewNormal=rotateModel(normal);viewPosition=p;
   }`;
 const fragment=`
   precision highp float;
@@ -34,6 +36,7 @@ const fragment=`
   uniform vec3 keyLight;
   uniform float lightMode, wire, distanceToCamera;
   varying vec2 tex;
+  varying vec3 sidePlate;
   varying vec3 albedo, viewNormal, viewPosition;
   varying float coverage, alternate;
   void main(){
@@ -54,6 +57,7 @@ const fragment=`
       }
     }
     vec3 base=mix(albedo,projected,clamp(coverage,0.,1.));
+    if(sidePlate.z>.001)base=mix(base,texture2D(photograph,sidePlate.xy/sidePlate.z).rgb,clamp(sidePlate.z,0.,1.));
     vec3 n=normalize(viewNormal);
     vec3 v=normalize(vec3(0.,0.,distanceToCamera)-viewPosition);
     if(dot(n,v)<0.)n=-n;
@@ -120,8 +124,8 @@ export function renderer3D(canvas){
   const shadows=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE0);
   const attrib={},uniform={};
-  for(const key of ['position','normal','uv','color','photoWeight','plateMix'])attrib[key]=gl.getAttribLocation(program,key);
-  for(const key of ['orbit','pivot','scale','distanceToCamera','keyLight','lightMode','wire','shadowPass','shadowTexel','lightSpace','inverseExtent','plateOffset'])uniform[key]=gl.getUniformLocation(program,key);
+  for(const key of ['position','normal','uv','color','photoWeight','plateMix','referenceUV'])attrib[key]=gl.getAttribLocation(program,key);
+  for(const key of ['orbit','pivot','scale','filmOffset','distanceToCamera','keyLight','lightMode','wire','shadowPass','shadowTexel','lightSpace','inverseExtent','plateOffset'])uniform[key]=gl.getUniformLocation(program,key);
   gl.uniform1i(gl.getUniformLocation(program,'photograph'),0);gl.uniform1i(gl.getUniformLocation(program,'depthMap'),1);
   gl.enable(gl.DEPTH_TEST);gl.clearColor(0,0,0,0);
   function buffer(target,data,dynamic=false){
@@ -137,7 +141,7 @@ export function renderer3D(canvas){
       if(Id===Uint32Array&&!gl.getExtension('OES_element_index_uint'))throw Error('Index format unavailable');
       const faces=Id.from(p.indices),lines=new Id(faces.length*2);
       for(let i=0;i<faces.length;i+=3){const a=faces[i],b=faces[i+1],c=faces[i+2];lines.set([a,b,b,c,c,a],i*2);}
-      const buffers=[buffer(A,p.current,true),buffer(A,p.normals,true),buffer(A,p.uv),buffer(A,p.colors),buffer(A,p.photoWeight),buffer(A,p.plateMix||new Float32Array(p.photoWeight.length)),buffer(E,faces),buffer(E,lines)];
+      const buffers=[buffer(A,p.current,true),buffer(A,p.normals,true),buffer(A,p.uv),buffer(A,p.colors),buffer(A,p.photoWeight),buffer(A,p.plateMix||new Float32Array(p.photoWeight.length)),buffer(A,p.referenceUV||new Float32Array(p.positions.length)),buffer(E,faces),buffer(E,lines)];
       groups.push({p,buffers,texture:albedoTexture(p.texture||model.photo),fmt:Id===Uint16Array?gl.UNSIGNED_SHORT:gl.UNSIGNED_INT});
     }
   }
@@ -146,10 +150,20 @@ export function renderer3D(canvas){
     gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);if(!model)return;
     const {min,max}=model.framing||model,extent=max.map((n,i)=>Math.max(.015,n-min[i]));
     const width=Math.max(extent[0],extent[2]*.94),height=extent[1],radius=Math.max(width,height)*.54;
-    const scale=Math.min(1.77/width,1.81*h/(w*height))*view.zoom;
-    gl.uniform3f(uniform.pivot,(min[0]+max[0])/2,(min[1]+max[1])/2,(min[2]+max[2])/2);
+    let scale=Math.min(1.77/width,1.81*h/(w*height))*view.zoom;
+    const pivot=min.map((v,i)=>(v+max[i])*.5);
+    let offsetX=0,offsetY=0;
+    if(view.reference){
+      const head=model.parts.find(p=>p.name==='Head').current;
+      for(let k=0;k<3;k++)pivot[k]=(head[33*3+k]+head[263*3+k])*.5;
+      const eyeWidth=Math.hypot(head[33*3]-head[263*3],head[33*3+1]-head[263*3+1]);
+      scale=2*view.reference.span/Math.max(.01,eyeWidth);
+      offsetX=view.reference.x*2-1;offsetY=1-2*view.reference.y;
+    }
+    gl.uniform2f(uniform.filmOffset,offsetX,offsetY);
+    gl.uniform3fv(uniform.pivot,pivot);
     gl.uniform2f(uniform.orbit,view.yaw*Math.PI/180,view.pitch*Math.PI/180);gl.uniform2f(uniform.scale,scale,scale*w/h);
-    gl.uniform1f(uniform.distanceToCamera,Math.max(.09,radius*6));
+    gl.uniform1f(uniform.distanceToCamera,view.reference?Math.max(.1,(model.max[1]-model.min[1])*4):Math.max(.09,radius*6));
     const lights=[[-.44,-.64,.90],[-.94,-.32,.35],[.78,-.55,.45]];
     gl.uniform3fv(uniform.keyLight,lights[view.light]||lights[0]);gl.uniform1f(uniform.lightMode,view.light);
     const normalized=a=>{const d=Math.hypot(...a);return a.map(x=>x/d);};
@@ -161,12 +175,12 @@ export function renderer3D(canvas){
     gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);
     function drawGroup(g,line,upload=false){
       const {buffers,p,fmt}=g;gl.uniform1f(uniform.plateOffset,p.plateOffset||0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.texture);
-      for(const [i,[key,size]] of [['position',3],['normal',3],['uv',2],['color',3],['photoWeight',1],['plateMix',1]].entries()){
+      for(const [i,[key,size]] of [['position',3],['normal',3],['uv',2],['color',3],['photoWeight',1],['plateMix',1],['referenceUV',3]].entries()){
         gl.bindBuffer(gl.ARRAY_BUFFER,buffers[i]);
         if(upload&&i<2)gl.bufferSubData(gl.ARRAY_BUFFER,0,i===0?p.current:p.normals);
         gl.enableVertexAttribArray(attrib[key]);gl.vertexAttribPointer(attrib[key],size,gl.FLOAT,false,0,0);
       }
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,buffers[line?7:6]);gl.drawElements(line?gl.LINES:gl.TRIANGLES,p.indices.length*(line?2:1),fmt,0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,buffers[line?8:7]);gl.drawElements(line?gl.LINES:gl.TRIANGLES,p.indices.length*(line?2:1),fmt,0);
     }
     gl.uniform1f(uniform.wire,0);
     if(shadows){

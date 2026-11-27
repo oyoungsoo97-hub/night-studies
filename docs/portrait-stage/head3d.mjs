@@ -114,6 +114,16 @@ function bakeHeadMaterial({photo,aspect,W,spokes,chartUV,tex,weights,cs,sn,origi
     const [x,y,w,h]=references.faceRect;
     ctx.drawImage(references.faceTexture,x*sw,y*sh,w*sw,h*sh);
     ctx.drawImage(references.scalpTexture,left,0,size,size);
+    const observed=ctx.getImageData(0,0,sw,sh).data,scalp=ctx.getImageData(left,0,size,size);
+    for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+      const ox=((x+.5)/size-.5)/.486,oy=((y+.5)/size-.5)/.486,r=Math.hypot(ox,oy);
+      if(r<.93||r>1.02)continue;
+      const s=angles[Math.floor((Math.atan2(oy,ox)+tau)%tau/tau*2048)],t=unit((1-r)/(1-chartRadius));
+      const d=s.extent*Math.sin(t*Math.PI/2),sx=s.x+W*d*(cs*s.ux-sn*s.uy),sy=s.y+W*d*(sn*s.ux+cs*s.uy);
+      const at=pix(sx,sy),dst=4*(y*size+x),w=ease((r-.93)/.067);
+      for(let k=0;k<3;k++)scalp.data[dst+k]=mix(scalp.data[dst+k],observed[at+k],w);
+    }
+    ctx.putImageData(scalp,left,0);
     if(references.rearLayer)ctx.drawImage(references.rearLayer,left,0,size,size);
   }
   for(let i=0;i<weights.length;i++){const chart=chartUV.get(i);if(chart){tex[i*2]=(left+.5+chart[0]*(size-1))/atlas.width;tex[i*2+1]=(.5+chart[1]*(size-1))/atlas.height;weights[i]=1;}
@@ -187,6 +197,7 @@ export function buildHead3D(input){
   // The shell uses a separate UV island. Its welded seam follows the actual 36-point face boundary.
   const chartRadius=.69,chart=(s,r)=>[.5+.486*r*s.ux,.5+.486*r*s.uy];
   let previous=rim.map((id,k)=>{const j=vertex(P[id],P[id],colorAt(P[id]),1,channels[id]);chartUV.set(j,chart(spokes[k*subdivision],1));return j;});
+  const faceSeam=rim.map((id,k)=>[id,previous[k]]);
   for(const t of [.09,.23,.41,.59,.74,.86,.95,1]){const row=spokes.map(s=>{const d=s.extent*Math.sin(t*Math.PI/2),xy=s.ray(d),f=1-Math.cos(t*Math.PI/2),z=mix(s.base[2],s.silZ,f)+W*.047*Math.sin(Math.PI*t)*(.3+s.top*.7);
     const shape=ease(t);xy[0]+=W*(sn*s.jawRise-cs*s.jawNarrow)*shape;xy[1]+=W*(-cs*s.jawRise-sn*s.jawNarrow)*shape;
     const q=[...xy,z],c=s.uy>.39?expression(q):null;if(c)c.shellJaw=(1-t)*.8;const id=vertex(q,xy,colorAt(xy),within(xy)?1:0,c);chartUV.set(id,chart(s,mix(1,chartRadius,t)));return id;});
@@ -217,7 +228,8 @@ export function buildHead3D(input){
       const x=clamp(u*32-.5,0,31),y=clamp(v*32-.5,0,31),i=Math.floor(x),j=Math.floor(y);
       const sample=(a,b,k)=>refs.warp[(Math.min(31,b)*32+Math.min(31,a))*2+k]/10000;
       const displacement=k=>mix(mix(sample(i,j,k),sample(i+1,j,k),x-i),mix(sample(i,j+1,k),sample(i+1,j+1,k),x-i),y-j)*W;
-      const dy=displacement(0);pos[id*3]-=sn*dy;pos[id*3+1]+=cs*dy;pos[id*3+2]+=displacement(1);
+      const radius=Math.hypot(u-.5,v-.5)/.486,fade=ease((1-radius)/.12);
+      const dy=displacement(0)*fade;pos[id*3]-=sn*dy;pos[id*3+1]+=cs*dy;pos[id*3+2]+=displacement(1)*fade;
     }
   }
   // Locate the surface behind each ear by intersecting the head at its actual y and z.
@@ -242,19 +254,63 @@ export function buildHead3D(input){
   // Connect the lower skull directly to the measured shoulder bar. Pose-only uploads have no separate face-derived collar.
   const chin=local(P[152]),S=48;let neck=[];const bodyLandmarks=input.pose?.landmarks;
   const bar=bodyLandmarks?.[11]&&bodyLandmarks?.[12]?average([bodyLandmarks[11].x,bodyLandmarks[11].y*aspect],[bodyLandmarks[12].x,bodyLandmarks[12].y*aspect]):null;
-  const neckBase=bar?local(bar):[chin[0],chin[1]+.37],neckTopY=Math.min(chin[1]-.30,headCenter[1]+.17),neckBottomY=input.joinNeck&&bar&&neckBase[1]>chin[1]+.12?chin[1]-.055:clamp(neckBase[1]+.13,chin[1]+.18,chin[1]+1.45);
-  let neckRadius=.28;
-  if(input.joinNeck&&maskWorks){
-    const cut=chin[1]+.075;
-    const widths=[-1,1].map(sign=>{let r=.14;for(;r<.48;r+=.008)if(matte(project(chin[0]+sign*r,cut))<.5)break;return r;});
-    neckRadius=clamp((widths[0]+widths[1])*.5,.235,.38);
+  // The throat and the garment yoke meet on an oblique loop. Construct it in
+  // photo/world space, independently of the tilt of the line between the eyes.
+  const chinPoint=P[152],height=clamp(chinPoint[1]-spokes.reduce((lo,s)=>Math.min(lo,s.ray(s.extent)[1]),chinPoint[1]),1.35*W,2.15*W);
+  const joined=input.joinNeck&&bar&&bar[1]>chinPoint[1]+.12*W;
+  const neckRadius=refs?.neckTexture ? .353 : .30;
+  const shoulderX=bar?.[0]??chinPoint[0];
+  const topX=(P[234][0]+P[454][0])*.5,bottomX=mix(topX,shoulderX,.65);
+  const low=joined?clamp((bar[1]-chinPoint[1])/height*.53,.17,.265):.34;
+  const sideNeck=refs?.neckTexture,neckAlbedo=[];
+  let neckPixels=null;
+  if(sideNeck&&typeof document!=='undefined'){
+    const plate=document.createElement('canvas');plate.width=sideNeck.width;plate.height=sideNeck.height;
+    const context=plate.getContext('2d',{willReadFrequently:true});context.drawImage(sideNeck,0,0);
+    neckPixels=context.getImageData(0,0,plate.width,plate.height).data;
   }
-  for(let j=0;j<=12;j++){const t=j/12,ring=[],slide=ease(t),width=mix(.225,neckRadius,slide)+(input.joinNeck?0:.092)*t**4,depth=.249+.028*t,centerX=mix(chin[0],neckBase[0],slide),level=mix(neckTopY,neckBottomY,t),centerZ=mix(-.31,-.255,slide);
-    for(let i=0;i<S;i++){const a=i*tau/S,fx=Math.cos(a),fz=Math.sin(a),x=centerX+fx*width,y=level+.047*fx*fx*t-.028*fz*(1-t),xy=project(x,y),q=[...xy,(centerZ+fz*depth)*W],channel={neck:t};
-      const donor=project(x,Math.max(chin[1]+.012,y)),shade=.90+.068*t+.04*Math.abs(fx),col=skin.map(c=>unit(c*shade));
-      const weight=ease((fz+.02)/.48)*(within(donor)&&(!maskWorks||matte(donor)>.49)?1:0);ring.push(vertex(q,donor,col,weight,channel));}
-    const center=project(centerX,level),center3=[...center,centerZ*W];if(neck.length)stitch(ring,neck);else closeRing(ring,vertex(center3,center,skin,0,{neck:0}));neck=ring;
-    if(j===12&&!input.joinNeck)closeRing([...neck].reverse(),vertex(center3,center,skin,0,{neck:1}));}
+  const anterior=[[-.27,-.136],[-.02,-.174],[0,-.190],[.05,-.219],[.10,-.239],[.14,-.247],[.17,-.240],[.25,-.19],[.38,-.14]];
+  function throat(y){let i=1;while(i<anterior.length-1&&y>anterior[i][0])i++;
+    const [a,u]=anterior[i-1],[b,v]=anterior[i];return mix(u,v,unit((y-a)/(b-a)));}
+  for(let j=0;j<=16;j++){
+    const t=j/16,ring=[],slide=ease(t),cx=mix(topX,bottomX,slide);
+    const frontHeight=mix(-.25,low,t),rz=height*mix(.132,.205,slide);
+    const front=chinPoint[2]+throat(frontHeight)*height,cz=front-rz;
+    for(let i=0;i<S;i++){
+      const a=i*tau/S,side=Math.cos(a),forward=Math.sin(a),circumference=(1-forward)*.5;
+      const yEnd=low-(joined?low+.052:.09)*circumference;
+      const y=chinPoint[1]+height*mix(-.25-.032*circumference,yEnd,t);
+      const muscle=Math.exp(-((Math.abs(side)-mix(.97,.39,t))**2)/.031)*Math.sin(Math.PI*t);
+      const rx=W*(mix(.30,neckRadius,slide)-.035*Math.sin(t*Math.PI)+.025*muscle+.038*t**4);
+      const back=chinPoint[2]-height*mix(.39,.571,ease(t));
+      const z=cz+(forward<0?cz-back:rz)*forward+W*.017*muscle*Math.max(0,forward);
+      const q=[cx+side*rx,y,z],v=(y-chinPoint[1])/height,u=(chinPoint[2]-z)/height;
+      const shadow=.89+.081*t+.022*side+.021*muscle,col=skin.map(c=>unit(c*shadow));
+      if(neckPixels){
+        const px=Math.round(188+317*u-226),py=Math.round(354+317*v-249);
+        if(px>=0&&px<sideNeck.width&&py>=0&&py<sideNeck.height){
+          const n=(py*sideNeck.width+px)*4,alpha=neckPixels[n+3]/255*Math.abs(side)**1.6;
+          for(let d=0;d<3;d++)col[d]=mix(col[d],neckPixels[n+d]/255,alpha*.91);
+        }
+      }
+      const donor=[q[0],q[1]];
+      if(sideNeck){
+        // Follow the bare-skin wedge between the braid and the checked lapels.
+        const py=clamp(q[1]*940,418,536),edges=[[418,467,562],[440,454,573],[470,450,563],[500,458,524],[520,464,505],[536,470,491]];
+        let n=1;while(n<edges.length-1&&py>edges[n][0])n++;
+        const lo=edges[n-1],hi=edges[n],blend=(py-lo[0])/(hi[0]-lo[0]);
+        donor[0]=clamp(q[0]*940,mix(lo[1],hi[1],blend),mix(lo[2],hi[2],blend))/940;donor[1]=py/940;
+      }
+      const src=colorAt(donor),isSkin=1-ease((colorDistance(src,skin)-.142)/.17);
+      const w=ease((forward-.05)/.75)*(sideNeck ? .95 : isSkin*ease((v-.055)/.10));
+      if(sideNeck)for(let d=0;d<3;d++)col[d]=mix(col[d],src[d]*shadow,.55*ease((forward+.3)/1.1));
+      if(j===16)neckAlbedo.push(lerp(col,src,w));
+      ring.push(vertex(q,donor,col,w,{neck:t}));
+    }
+    const center=[cx,chinPoint[1]+frontHeight*height,cz];
+    if(neck.length)stitch(ring,neck);else closeRing(ring,vertex(center,center,skin,0,{neck:0}));
+    neck=ring;if(j===16&&!joined)closeRing([...neck].reverse(),vertex(center,center,skin,0,{neck:1}));
+  }
   // Make the inner bottom lip follow the jaw hinge without dragging the upper lip into the aperture.
   const lowerLip=[95,88,178,87,14,317,402,318,324,17,84,314,181,405,91,321];
   for(const id of lowerLip){const ch=channels[id];ch.jaw=Math.max(ch.jaw,.94*ease((1.15-Math.abs((ch.x-mouth[0])/mw))/.57));}
@@ -287,11 +343,15 @@ export function buildHead3D(input){
   }
   const texture=bakeHeadMaterial({photo:input.photo,aspect,W,spokes,chartUV,tex,weights,cs,sn,origin,matte,maskWorks,P,skin,hair,chartRadius,references:refs});
   const positions=new Float32Array(pos),uv=new Float32Array(tex),colors=new Float32Array(rgb),photoWeight=new Float32Array(weights),indices=new Uint16Array(idx);
-  const pivotXY=project(headCenter[0],headCenter[1]+.16),pivotZ=-W*.23;
+  const pivotXY=[topX,chinPoint[1]-.23*height],pivotZ=chinPoint[2]-.37*height;
   const shoulders=input.pose?.landmarks;const length=positions.length/3;
   function pose(frame={},out=new Float32Array(positions.length)){
     const f=frame.pose||{},yaw=(f.yaw||0)*1.38,tilt=(f.pitch||0)*.72,roll=(f.roll||0)*.60,depth=(f.depth||0)*W*.23;
-    const cy=Math.cos(yaw),sy=Math.sin(yaw),ct=Math.cos(tilt),st=Math.sin(tilt),cr=Math.cos(roll),sr=Math.sin(roll);
+    const rotations=new Map();
+    function angles(influence){
+      if(!rotations.has(influence))rotations.set(influence,[Math.cos(yaw*influence),Math.sin(yaw*influence),Math.cos(tilt*influence),Math.sin(tilt*influence),Math.cos(roll*influence),Math.sin(roll*influence)]);
+      return rotations.get(influence);
+    }
     const jaw=(f.jaw||0),smL=f.smileL||0,smR=f.smileR||0,puck=f.pucker||0,bL=f.blinkL||0,bR=f.blinkR||0;
     let torsoC=1,torsoS=0,bodyScale=1,bodyDX=0,bodyDY=0,bodyDZ=0;
     const active=frame.body;if(shoulders?.length>=13&&active?.length>=13){const a=shoulders[11],b=shoulders[12],A=active[11],B=active[12];
@@ -307,12 +367,14 @@ export function buildHead3D(input){
         z+=W*(.080*orb+.024*(smileA+smileB)+.042*(left.edge*bL+right.edge*bR));
         const open=jaw*p.jaw*(p.shellJaw??1)*.32;
         if(open){const y0=y+W*.055,z0=z+W*.045,c=Math.cos(open),s=Math.sin(open);y=y0*c+z0*s-W*.055;z=z0*c-y0*s-W*.045;}}
-      const x1=cy*x+sy*z,z1=cy*z-sy*x,y1=ct*y+st*z1,z2=ct*z1-st*y;
-      const neckInfluence=p?.braid??(p?.neck===undefined?1:input.joinNeck?1-.77*ease(p.neck):1-ease((p.neck-.12)/.64));
-      const rx=mix(x,cr*x1-sr*y1,neckInfluence),ry=mix(y,sr*x1+cr*y1,neckInfluence),ix=cs*rx-sn*ry,iy=sn*rx+cs*ry;
-      out[j]=pivotXY[0]+bodyDX+(ix*torsoC-iy*torsoS)*bodyScale;out[j+1]=pivotXY[1]+bodyDY+(iy*torsoC+ix*torsoS)*bodyScale;out[j+2]=pivotZ+mix(z,z2+depth,neckInfluence)+bodyDZ;
+      const influence=p?.braid??(p?.neck===undefined?1:1-ease(p.neck));
+      const [cy,sy,ct,st,cr,sr]=angles(influence),x1=cy*x+sy*z,z1=cy*z-sy*x,y1=ct*y+st*z1,z2=ct*z1-st*y;
+      const rx=cr*x1-sr*y1,ry=sr*x1+cr*y1,ix=cs*rx-sn*ry,iy=sn*rx+cs*ry;
+      out[j]=pivotXY[0]+bodyDX+(ix*torsoC-iy*torsoS)*bodyScale;
+      out[j+1]=pivotXY[1]+bodyDY+(iy*torsoC+ix*torsoS)*bodyScale;
+      out[j+2]=pivotZ+z2+depth*influence+bodyDZ;
     }return out;
   }
   const centroid=neck.reduce((c,i)=>c.map((v,d)=>v+positions[i*3+d]/S),[0,0,0]);
-  return {neckRing:neck,neckCenter:{x:centroid[0],y:centroid[1],z:centroid[2]},neckWidth:W*neckRadius,neckDepth:W*.277,positions,uv,colors,photoWeight,indices,pose,texture,estimated:!!face.estimated};
+  return {faceSeam,neckAlbedo,neckRing:neck,neckCenter:{x:centroid[0],y:centroid[1],z:centroid[2]},neckWidth:W*neckRadius,chinPoint,height,neckDepth:height*.205,positions,uv,colors,photoWeight,indices,pose,texture,estimated:!!face.estimated};
 }

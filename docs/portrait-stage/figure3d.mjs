@@ -1,4 +1,4 @@
-import {fitHandPose,curlJoints} from './hand3d.mjs?v=b57fe028e9';
+import {fitHandPose,curlJoints,photoHand,handPoints,registerRestHand} from './hand3d.mjs?v=649a3cd4e5';
 // Photo-space x and y are measured in image widths. The camera looks down -z.
 const limit=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -7,6 +7,32 @@ const between=(a,b,t)=>point(lerp(a.x,b.x,t),lerp(a.y,b.y,t),lerp(a.z,b.z,t));
 const length=(a,b)=>Math.hypot(b.x-a.x,b.y-a.y);
 const valid=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y);
 const smooth=(a,b,x)=>{const t=limit((x-a)/(b-a),0,1);return t*t*(3-2*t);};
+const diff3=(a,b)=>point(a.x-b.x,a.y-b.y,a.z-b.z);
+const dot3=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z;
+const cross3=(a,b)=>point(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x);
+function normalized(p){
+  const l=Math.hypot(p.x,p.y,p.z);return l>1e-8?point(p.x/l,p.y/l,p.z/l):null;
+}
+function planarAxis(p,tangent){
+  const d=dot3(p,tangent);return normalized(point(p.x-d*tangent.x,p.y-d*tangent.y,p.z-d*tangent.z));
+}
+function handAxes(joints,ids){
+  const up=normalized(diff3(joints[ids[9]],joints[ids[0]]));if(!up)return null;
+  const side=planarAxis(diff3(joints[ids[17]],joints[ids[5]]),up);return side?{side,up,normal:cross3(side,up)}:null;
+}
+function sectionFrame(a,b,basis,bind,twist=1){
+  const flat=frameAt(a,b,bind),tangent=normalized(diff3(b,a));if(!tangent||!basis)return flat;
+  const side0=planarAxis(basis.side,tangent)||planarAxis(basis.normal,tangent);if(!side0)return flat;
+  const phase=bind?.phase??(dot3(side0,point(flat.x,flat.y,flat.sz||0))<0?-1:1);
+  let side=point(phase*side0.x,phase*side0.y,phase*side0.z);
+  if(twist<1){
+    const initial=point(flat.x,flat.y,flat.sz||0),orth=cross3(tangent,initial);
+    const angle=Math.atan2(dot3(side,orth),dot3(side,initial))*twist;
+    side=point(initial.x*Math.cos(angle)+orth.x*Math.sin(angle),initial.y*Math.cos(angle)+orth.y*Math.sin(angle),initial.z*Math.cos(angle)+orth.z*Math.sin(angle));
+  }
+  const deep=cross3(side,tangent);
+  return {x:side.x,y:side.y,sz:side.z,fx:deep.x,fy:deep.y,fz:deep.z,phase};
+}
 const mixColor=(a,b,t)=>a.map((v,i)=>lerp(v,b[i],t));
 const neutralCloth=[.32,.30,.29];
 const neutralSkin=[.64,.47,.37];
@@ -106,13 +132,13 @@ function padSilhouette(ctx,pw,ph,mask){
   }
   ctx.putImageData(rgba,0,0);
 }
-function sampleAtlas(photo,aspect,patches,sample,mask,crossed,body,span,hands,backCloth){
+function sampleAtlas(photo,aspect,patches,sample,mask,crossed,body,span,hands,backCloth,sideCloth,palms){
   if(!photo||!sample||typeof document==='undefined')return null;
   const w=photo.naturalWidth||photo.width,h=photo.naturalHeight||photo.height;
   if(!w||!h)return null;
   const scale=Math.min(1,1280/Math.max(w,h)),pw=Math.max(2,Math.round(w*scale)),ph=Math.max(2,Math.round(h*scale));
   const size=256,clothOffset=pw,swatchX=pw+(backCloth?3:2)*clothOffset+3;
-  const canvas=document.createElement('canvas');canvas.width=swatchX+size+1;canvas.height=Math.max(2*size+4,ph);
+  const canvas=document.createElement('canvas');canvas.width=swatchX+size+1;canvas.height=Math.max(2*size+4,ph)+(palms?Math.max(...palms.map(p=>p.height))+2:0);
   const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)return null;ctx.drawImage(photo,0,0,pw,ph);padSilhouette(ctx,pw,ph,mask);
   if(hands.length){
     const picture=ctx.getImageData(0,0,pw,ph),pixels=picture.data;
@@ -263,7 +289,32 @@ function sampleAtlas(photo,aspect,patches,sample,mask,crossed,body,span,hands,ba
     ctx.fillStyle='rgb('+patches[0].tint.map(c=>Math.round(c*255)).join(',')+')';ctx.fillRect(pw*3,0,pw,ph);
     ctx.drawImage(layer,pw*3,0);
   }
-  return {canvas,backConfidence,plateOffset:clothOffset/canvas.width,front:(x,y,cloth=false)=>[(limit(x,.5/pw,1-.5/pw)*pw+(cloth?clothOffset:0))/canvas.width,limit(y/aspect,.5/ph,1-.5/ph)*ph/canvas.height],
+  const palmUV=palms?.map((image,i)=>{
+    const left=i?palms[0].width+1:0,top=ph+2;
+    ctx.drawImage(image,left,top);
+    return (x,y,w)=>[(left+limit(x,.001,.999)*image.width)/canvas.width,(top+limit(y,.001,.999)*image.height)/canvas.height,w];
+  });
+  let sideProjection=null;
+  if(sideCloth){
+    const top=2*size+6,sw=sideCloth.width,sh=sideCloth.height;
+    const cut=document.createElement('canvas');cut.width=sw;cut.height=sh;
+    const read=cut.getContext('2d',{willReadFrequently:true});read.drawImage(sideCloth,0,0);
+    const im=read.getImageData(0,0,sw,sh),alpha=Uint8Array.from({length:sw*sh},(_,i)=>im.data[4*i+3]);
+    // Pad transparent texels with their nearest garment colour before GPU filtering.
+    const nearest=new Int32Array(sw*sh).fill(-1),queue=new Int32Array(sw*sh);let n=0;
+    for(let i=0;i<nearest.length;i++)if(alpha[i]>170){nearest[i]=i;queue[n++]=i;}
+    for(let i=0;i<n;i++){const k=queue[i];for(const v of [k%sw?k-1:-1,k%sw<sw-1?k+1:-1,k-sw,k+sw]){
+      if(v>=0&&v<nearest.length&&nearest[v]===-1){nearest[v]=nearest[k];queue[n++]=v;}
+    }}
+    for(let i=0;i<nearest.length;i++){if(alpha[i]<170&&nearest[i]>=0)for(let c=0;c<3;c++)im.data[4*i+c]=im.data[4*nearest[i]+c];im.data[4*i+3]=255;}
+    ctx.putImageData(im,swatchX,top);
+    sideProjection=(u,v,weight)=>{
+      const x=limit(u,0,1)*(sw-1),y=limit(v,0,1)*(sh-1);
+      const visible=u>=0&&u<=1&&v>=0&&v<=1?alpha[Math.round(y)*sw+Math.round(x)]/255:0;
+      return [(swatchX+x+.5)/canvas.width,(top+y+.5)/canvas.height,visible*weight];
+    };
+  }
+  return {canvas,palmUV,sideProjection,backConfidence,plateOffset:clothOffset/canvas.width,front:(x,y,cloth=false)=>[(limit(x,.5/pw,1-.5/pw)*pw+(cloth?clothOffset:0))/canvas.width,limit(y/aspect,.5/ph,1-.5/ph)*ph/canvas.height],
     rear:(k,u,v)=>[(swatchX+1+limit(u,0,1)*(size-3))/canvas.width,(k*(size+2)+1+limit(v,0,1)*(size-3))/canvas.height]};
 }
 
@@ -285,6 +336,12 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
   }
   const shoulderZ=shoulders?((joints[11].z||0)+(joints[12].z||0))*.5:0;
   for(let i=0;i<body.length;i++)if(body[i])body[i].z=-span*.155+limit((shoulderZ-(joints[i].z||0))*.39,-span*.34,span*.52);
+  if(references&&head?.chinPoint){
+    const coronalZ=head.chinPoint[2]-head.height*.415;
+    const offset=coronalZ+span*.155;
+    for(const joint of body)if(joint)joint.z+=offset;
+  }
+  const sideClothWeights=[],handUV=[];
   const rest=[],now=[],drivers=[],sweeps=[],positions=[],uv=[],colors=[],weights=[],plates=[],indices=[];
   const add=(p,fn)=>{const id=rest.length;rest.push(p);now.push({...p});drivers.push(fn);return id;};
   const fixed=p=>add(p,null);
@@ -342,10 +399,11 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
   }
   // Sweep centreline samples around anatomical cross-sections. Each mesh is independently closed.
   // Rigid cross-sections turn with their live tangent, including finger knuckles, instead of stretching a sheet.
-  function tube(ids,shape,{segments=20,sides=24,fit=.65,color=neutralCloth,texture=1,material=1,interior=null,surface="limb",tilt=null,armSide=null,torsoSockets=null,neckLength=0,neckJoin=null,openStart=null,openEnd=null,thumbSocket=null,extendBelow=false}={}){
+  function tube(ids,shape,{segments=20,sides=24,fit=.65,color=neutralCloth,texture=1,material=1,interior=null,surface="limb",tilt=null,armSide=null,torsoSockets=null,neckLength=0,neckJoin=null,openStart=null,openEnd=null,thumbSocket=null,extendBelow=false,palmIds=null,wristRoll=false,palmMap=null}={}){
     if(ids.length<2)return;
     const lengths=[0];for(let i=1;i<ids.length;i++)lengths.push(lengths.at(-1)+length(rest[ids[i-1]],rest[ids[i]]));
     const total=lengths.at(-1);if(total<.0015)return;
+    const basis=palmIds?handAxes(rest,palmIds):null;
     const pieces=[];let rings=null;
     for(let i=1;i<ids.length;i++){
       const a=ids[i-1],b=ids[i],bounds=interval(rest[a],rest[b],extendBelow?aspect+span*.73:aspect);
@@ -362,7 +420,9 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
     for(const rows of pieces){
       if(rows.length<2)continue;
       for(let j=0;j<rows.length;j++){
-        const r=rows[j];r.axis=frameAt(rows[Math.max(0,j-1)].c,rows[Math.min(rows.length-1,j+1)].c);
+        const r=rows[j],a=rows[Math.max(0,j-1)].c,b=rows[Math.min(rows.length-1,j+1)].c;
+        r.twist=wristRoll?smooth(.48,1,r.t):1;
+        r.axis=basis?sectionFrame(a,b,basis,null,r.twist):frameAt(a,b);
         r.left=estimateBound(r.c.x,r.c.y,r.axis,-1,r.rx,mask,aspect,fit);
         r.right=estimateBound(r.c.x,r.c.y,r.axis,1,r.rx,mask,aspect,fit);
         r.tint=palette(sample,mask,aspect,r.c,r.axis,r.rx,color);
@@ -394,6 +454,11 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
           const theta=Math.PI*2*k/sides,co=Math.cos(theta),sn=Math.sin(theta);
           const lateral=(co<0?r.left:r.right)*co*scale;
           let deep=r.rz*sn*scale;
+          if(surface==='palm'&&sn>=0){
+            const pad=Math.exp(-(((co+.45)/.40)**2))*Math.sin(Math.PI*r.t);
+            const heel=Math.exp(-(((r.t-.30)/.24)**2))*(1-co*co);
+            deep*=1+.24*pad+.12*heel;
+          }
           if(surface==='palm'&&sn<0){
             const ridge=(.5+.5*Math.cos((co+.12)*Math.PI*4))**2;
             deep*=1+.19*ridge*smooth(.12,.51,r.t)*(1-smooth(.9,1,r.t));
@@ -403,8 +468,14 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
             const groove=Math.exp(-((co/.15)**2))*(1-smooth(.65,.95,r.t));
             deep*=1+.11*blades-.056*groove;
           }
-          const skew=lateral*r.slope;
-          const p=point(r.c.x+r.axis.x*lateral+r.axis.fx*deep,r.c.y+r.axis.y*lateral+r.axis.fy*deep,r.c.z+r.axis.fz*deep+skew);
+          let skew=lateral*r.slope;
+          if(references&&head&&surface==='cloth'&&sn<0){
+            const h=head.height,dy=(r.c.y-head.chinPoint[1])/h;
+            const backZ=head.chinPoint[2]-h*(.59+.16*smooth(.05,.72,dy));
+            const rear=r.c.z-r.axis.fz*r.rz;
+            skew+=Math.min(0,backZ-rear)*(-sn)**.89*(1-smooth(.72,1.25,dy))*scale;
+          }
+          const p=point(r.c.x+r.axis.x*lateral+r.axis.fx*deep,r.c.y+r.axis.y*lateral+r.axis.fy*deep,r.c.z+(r.axis.sz||0)*lateral+r.axis.fz*deep+skew);
           const cov=coverage(mask,aspect,p.x,p.y);
           let w=inPhoto(p,aspect)?smooth(.05,.60,sn)*smooth(.25,.80,cov)*texture*(interior?interior(p,r):1):0;
           if(scale!==1)w=0;
@@ -440,7 +511,7 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
             // All vertices around the armholes use the same projected atlas. Atlas islands
             // on opposite sides of a shared triangle produce visible rectangular stripes.
             const u=surface==='cloth'&&neckLength?limit(r.t*total/neckLength,0,1):1;
-            const skin=surface==='cloth'?1-smooth(.62,1.0,u):0;
+            const skin=surface==='cloth'?(1-u)*smooth(.12,.62,sn):0;
             tint=mixColor(tintCloth,tintSkin,skin);
             w=scale===1?smooth(-.19,.31,sn)*texture*(interior?interior(p,r):1):0;
           }
@@ -475,7 +546,13 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
             if(r.nail&&sn<0)tint=mixColor(tint,[.92,.79,.80],r.nail*smooth(.25,.8,-sn)*.72);
             w=0;
           }
-          addVertex(p,tint,w,tex,plate);offset.push(lateral,deep,skew);
+          const id=addVertex(p,tint,w,tex,plate);
+          if(palmMap)handUV[id]=palmMap(r,co,sn,lateral);
+          if(atlas?.sideProjection&&(surface==='cloth'||armSide===11&&r.t<.46)){
+            const left=smooth(-.02,.21,(p.x-head.chinPoint[0])/span);
+            sideClothWeights[id]=left*smooth(.10,.71,Math.abs(co));
+          }
+          offset.push(lateral,deep,skew);
         }
         if(!r.bands)r.bands=[];r.bands.push({start,offset});return start;
       }
@@ -552,7 +629,7 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
         const center=addVertex(r.c,surface==='skin'?color:r.tint,0);r.cap=center;
         for(let k=0;k<sides;k++){const next=(k+1)%sides;if(first)indices.push(outer+k,outer+next,center);else indices.push(outer+k,center,outer+next);}
       }
-      sweeps.push(rows);
+      rows.palmIds=palmIds;sweeps.push(rows);
     }
   }
   function sewShoulder(socket,start,next,count){
@@ -571,15 +648,15 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
         const a=loop[k],ao=outside[k],b=start+(k+shift)%count,bo=next+(k+shift)%count;
         if(j===7){row.push(b);continue;}
         const control=(src,dst)=>Math.hypot(...[0,1,2].map(d=>xyz(src,d)-xyz(dst,d)));
-        const chord=control(a,b),ka=Math.min(9,.48*chord/Math.max(.0002,control(a,ao))),kb=Math.min(14,.33*chord/Math.max(.0002,control(b,bo)));
+        const chord=control(a,b),ka=Math.min(4,.24*chord/Math.max(.0002,control(a,ao))),kb=Math.min(4,.23*chord/Math.max(.0002,control(b,bo)));
         const A=(1-t)**2*(1+2*t),B=t*t*(3-2*t),aa=3*(1-t)**2*t*ka,bb=3*(1-t)*t*t*kb;
         const ids=[a,ao,b,bo],coeff=[A+aa,-aa,B+bb,-bb];
         const co=[0,1,2].map(d=>ids.reduce((r,id,n)=>r+coeff[n]*xyz(id,d),0));
         const p=point(...co),tint=colors.slice(3*a,3*a+3).map((c,d)=>lerp(c,colors[3*b+d],t));
         // Keep rear-swatch UVs out of triangles carrying the camera projection.
         const w=lerp(weights[a],weights[b],t);
-        const id=addVertex(p,tint,w,atlas?.front(p.x,p.y),1);
-        row.push(id);bridges.push({id,ids,coeff});
+        const id=addVertex(p,tint,w,atlas?.front(p.x,p.y),lerp(plates[a],plates[b],t));
+        sideClothWeights[id]=lerp(sideClothWeights[a]||0,sideClothWeights[b]||0,t);row.push(id);bridges.push({id,ids,coeff});
       }
       for(let k=0;k<count;k++){const n=(k+1)%count;indices.push(prev[k],row[k],prev[n],prev[n],row[k],row[n]);}
       prev=row;
@@ -650,7 +727,7 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
       for(const d of [-.05,.05]){const edge=sample(limit(p.x+d*span,0,1),p.y/aspect);difference+=.5*Math.hypot(...edge.map((v,i)=>v-center[i]));}
       if(difference<score){score=difference;swatch=p;}
     }
-    atlas=sampleAtlas(photo,aspect,[{p:swatch,r:span*.14,tint:tintCloth},{p:cheek||chest,r:Math.max(.003,(faceWidth||span*.24)*.14),tint:tintSkin}],sample,mask,[...crossed.values()],body,span,rawHands,references?.backCloth);
+    atlas=sampleAtlas(photo,aspect,[{p:swatch,r:span*.14,tint:tintCloth},{p:cheek||chest,r:Math.max(.003,(faceWidth||span*.24)*.14),tint:tintSkin}],sample,mask,[...crossed.values()],body,span,rawHands,references?.backCloth,references?.shoulderTexture,references?.palmTextures);
   }
   function bindHand(points,h,wrist,elbow,inferred=false){
     const p=points[0],refW=body[wrist],axis=refW&&body[elbow]?frameAt(body[elbow],refW):null;
@@ -663,10 +740,10 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
       if(i===0){
         fitted=null;
         if(input?.length===21&&input.every(valid)){
-          const ratio=inferred?limit(palmLength/Math.max(.008,length(input[0],input[9])),.15,4):1;
+          const ratio=inferred&&input[0].dz===undefined?limit(palmLength/Math.max(.008,length(input[0],input[9])),.15,4):1;
           const target=input.map((v,k)=>point(input[0].x+(v.x-input[0].x)*ratio,input[0].y+(v.y-input[0].y)*ratio,
-            template[k].z+limit(v.dz||0,-palmLength*1.6,palmLength*1.6)));
-          fitted=fitHandPose(template,target);
+            template[k].z+(v.measured?v.dz:limit(v.dz||0,-palmLength*1.6,palmLength*1.6))));
+          fitted=input.every(v=>v.measured===true)?target:fitHandPose(template,target);
         }else if(inferred&&frame.pose?.hands){
           fitted=curlJoints(template,limit(frame.pose.hands,-1,1));
         }
@@ -750,16 +827,38 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
     return loop;
   }
   const inferredPalms=[null,null];
-  const handRoots=new Map(),palmCenters=new Map(),wristLoops=new Map();
+  const handBones=new Map(),handRoots=new Map(),palmCenters=new Map(),wristLoops=new Map();
   function handMesh(source,h,wrist,elbow,inferred=false){
     const extended=inferred&&references&&inPhoto(source[0],aspect,span*.23);
     if(source.length!==21||!source.every(valid)||!extended&&!inPhoto(source[0],aspect,span*.08))return;
-    if(inferred)inferredPalms[source[0].x<.5?0:1]=source;
+    if(inferred)inferredPalms[source[0].x<.5?0:1]=source.map(p=>({...p,z:-p.z/.69,bindDepth:p.z}));
     const ids=bindHand(source,h,wrist,elbow,inferred),w=ids[0],knuckles=blendIndex(ids[5],ids[17],.5),size=length(rest[w],rest[knuckles]);
     if(size<.002)return;
-    if(wrist!=null){handRoots.set(wrist,w);palmCenters.set(wrist,knuckles);}
-    const spread=limit(length(source[5],source[17]),size*.33,size*1.4);
+    if(wrist!=null){handBones.set(wrist,ids);handRoots.set(wrist,w);palmCenters.set(wrist,knuckles);}
+    const spread=limit(Math.hypot(...Object.values(diff3(source[5],source[17]))),size*.52,size*1.48);
     const handTint=inferred?tintSkin:palette(sample,mask,aspect,between(source[0],source[9],.55),{x:1,y:0},spread*.27,tintSkin);
+    const slot=wrist===15?0:1,marks=references?.palmMarks?.[slot],stamp=atlas?.palmUV?.[slot];
+    const donor=(finger)=>{
+      if(!marks||!stamp)return null;
+      let path;
+      if(finger<0)path=[marks[0],[0,1].map(k=>lerp(marks[0][k],(marks[5][k]+marks[17][k])*.5,.69))];
+      else path=marks.slice(1+4*finger+(finger===0?1:0),5+4*finger);
+      const distances=[0];
+      for(let i=1;i<path.length;i++)distances.push(distances[i-1]+Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]));
+      const width=Math.hypot(marks[17][0]-marks[5][0],marks[17][1]-marks[5][1]);
+      const restAcross=diff3(source[17],source[5]);
+      return (row,co,sn,lateral)=>{
+        const along=row.t*distances.at(-1);let j=1;while(j<path.length-1&&distances[j]<along)j++;
+        const t=limit((along-distances[j-1])/Math.max(.0001,distances[j]-distances[j-1]),0,1),a=path[j-1],b=path[j];
+        const dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy)||1;
+        const sign=Math.sign((-dy*(marks[17][0]-marks[5][0])+dx*(marks[17][1]-marks[5][1]))*dot3(restAcross,point(row.axis.x,row.axis.y,row.axis.sz||0)))||1;
+        const across=lateral*width/spread*(finger<0?.86:.69)*sign;
+        const u=lerp(a[0],b[0],t)-dy/length*across,v=lerp(a[1],b[1],t)+dx/length*across;
+        // A side-on palmar texture falls off before it crosses onto the nail bed.
+        const facing=sn*row.axis.fz,weight=(.22+.77*smooth(-.40,.70,facing))*(finger<0?smooth(0,.13,row.t):1);
+        return stamp(u,v,weight);
+      };
+    };
     const complete=(!hands[h]?.active||hands[h].active.length===21)&&[0,1,2,5,9,13,17].every(i=>extended||inPhoto(source[i],aspect));
     const armAttached=wrist!=null&&shoulders&&sideConfidence(elbow,.22)&&length(body[wrist-4],body[elbow])<span*1.62&&(extended||inPhoto(rest[w],aspect));
     const wristLoop=armAttached?{}:null,knuckleLoop=complete?{}:null,thumbHole=complete?{position:source[2]}:null;
@@ -769,8 +868,8 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
     const baseWidth=spread*.64,active=inferred?null:hands[h]?.active;
     tube(complete?(armAttached?[w,palmEnd]:[palmStart,palmEnd]):[palmStart,w,knuckles,palmEnd],t=>({
       rx:baseWidth*profile(complete?[[0,.58],[.25,.77],[.65,.97],[1,1.03]]:[[0,.34],[.13,.64],[.34,.83],[.58,1],[.78,1.02],[.94,.91],[1,.72]],t),
-      rz:Math.max(spread*.18,size*.15)*profile(complete?[[0,.81],[.55,1],[1,.97]]:[[0,.69],[.26,.94],[.58,1],[.91,.69],[1,.46]],t)
-    }),{segments:17,sides:36,fit:inferred?.35:.22,color:handTint,texture:inferred?.38:.98,material:inferred?.24:.85,surface:"palm",extendBelow:!!extended,openStart:wristLoop,openEnd:knuckleLoop,thumbSocket:thumbHole});
+      rz:Math.max(spread*.244,size*.20)*profile(complete?[[0,.81],[.55,1],[1,.97]]:[[0,.69],[.26,.94],[.58,1],[.91,.69],[1,.46]],t)
+    }),{segments:17,sides:36,fit:inferred?.35:.22,color:handTint,texture:inferred?.38:.98,material:inferred?.24:.85,surface:"palm",palmMap:donor(-1),palmIds:ids,extendBelow:!!extended,openStart:wristLoop,openEnd:knuckleLoop,thumbSocket:thumbHole});
     for(let f=0;f<5;f++){
       const first=1+4*f;if(active&&!active.includes(first+3))continue;
       const radius=spread*[.159,.143,.144,.131,.108][f],path=ids.slice(first,first+4);
@@ -780,8 +879,8 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
         if(f===0)path.shift();
         else path[0]=blendIndex(path[0],path[1],.055);
       }else path.unshift(f===0?blendIndex(w,knuckles,.40):blendIndex(path[0],path[1],-.24));
-      tube(path,t=>{const r=radius*fingertip(t);return {rx:r,rz:r*.89,nail:smooth(.73,.84,t)*(1-smooth(.94,.992,t))};},
-        {segments:20,sides:16,fit:mask?.width>150?.11:0,color:handTint,material:inferred?.18:.69,texture:inferred?.26:.98,surface:"skin",extendBelow:!!extended,openStart:socket});
+      tube(path,t=>{const r=radius*fingertip(t);return {rx:r,rz:r*(1.02+.13*Math.sin(Math.PI*t)),nail:smooth(.73,.84,t)*(1-smooth(.94,.992,t))};},
+        {segments:20,sides:16,fit:mask?.width>150?.11:0,color:handTint,material:inferred?.18:.69,texture:inferred?.26:.98,surface:"skin",palmMap:donor(f),palmIds:ids,extendBelow:!!extended,openStart:socket});
       if(socket?.loop){
         if(f===0&&thumbHole?.loop)linkRings(thumbHole.loop,socket.loop);
         else if(f>0)fingerLoops.push(socket.loop);
@@ -792,8 +891,8 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
   for(let h=0;h<rawHands.length;h++){
     const raw=rawHands[h];if(raw?.length!==21||!raw.every(valid))continue;
     const wrist=[...handSlots].find(([,id])=>id===h)?.[0],len=length(point(raw[0].x,raw[0].y*aspect),point(raw[9].x,raw[9].y*aspect));
-    const contact=crossed.get(h),points=raw.map(q=>{const p=point(q.x,q.y*aspect);
-      const local=limit(-((q.z||0)-(raw[0].z||0))*.69,-len*.65,len*.78);
+    const contact=crossed.get(h),points=photoHand(handPoints(hands[h],aspect)).map(p=>{
+      const local=p.z;
       p.z=contact?lerp(local,contact.sleeveDepth(p)-body[wrist].z,.86):local;return p;
     });
     handMesh(points,h,wrist,wrist!=null?wrist-2:null);
@@ -820,7 +919,8 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
     for(let f=0;f<5;f++)for(const u of [0,.45,.74,1]){
       points.push(at(lerp(bases[f][1],ends[f][1],u),lerp(bases[f][0],ends[f][0],u),.018*Math.sin(Math.PI*u)+.026*u+(references ? .12*u*u : 0)));
     }
-    handMesh(points,-1,wrist,elbow,true);
+    const registered=wrist===15&&references?.leftHandWorld?registerRestHand(points,references.leftHandWorld,len):points;
+    handMesh(registered,-1,wrist,elbow,true);
   }
   if(shoulders){inferredHand(15,13,1);inferredHand(16,14,-1);}
   if(shoulder!=null){
@@ -862,7 +962,7 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
       }
     }
     const seam=head?.neckRing,upper=seam?head.neckCenter:null;
-    const connected=upper&&inPhoto(upper,aspect)&&upper.y<center.y-span*.05;
+    const connected=upper&&inPhoto(upper,aspect)&&upper.y<center.y-span*.03;
     const neckTop=connected?attach(upper,shoulder,hips):top;
     const neckSpan=length(rest[neckTop],center),mainLength=length(center,hip)+length(hip,rest[bottom]),total=neckSpan+mainLength;
     const collarbone=connected?limit((center.y-upper.y)/span,.08,.75):0;
@@ -873,11 +973,11 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
       const neckWidth=head.neckWidth/span,neckDepth=head.neckDepth/span;
       const shoulderWidth=.51*profile(torsoWidth,.20*span/(mainLength+.20*span));
       const shoulderDepth=.51*profile(torsoDepth,.20*span/(mainLength+.20*span));
-      return {rx:span*profile([[0,neckWidth],[.30,neckWidth*1.08],[.51,neckWidth*1.27],[.73,shoulderWidth*.67],[1,shoulderWidth]],u),
+      return {rx:span*profile([[0,neckWidth],[.22,lerp(neckWidth,shoulderWidth,.17)],[.60,lerp(neckWidth,shoulderWidth,.61)],[.87,lerp(neckWidth,shoulderWidth,.94)],[1,shoulderWidth]],u),
         rz:span*lerp(neckDepth,shoulderDepth,smooth(.12,1,u))};
     }
     tube([neckTop,shoulder,hips,bottom],chestShape,
-      {segments:56,sides:48,fit:.87,color:tintCloth,material:.88,interior:photoVisibility,surface:"cloth",tilt:r=>lerp(slope(shoulderPair,r),slope(hipPair,r),smooth(.20,.88,r.t)),torsoSockets:arms,neckJoin:connected?seam:null,neckLength:neckSpan*.78});
+      {segments:56,sides:48,fit:.87,color:tintCloth,material:.88,interior:photoVisibility,surface:"cloth",tilt:r=>lerp(slope(shoulderPair,r),slope(hipPair,r),smooth(.20,.88,r.t)),torsoSockets:arms,neckJoin:connected?seam:null,neckLength:neckSpan*1.10});
     for(const [s,e,w,knee,ankle,heel,toe] of [[11,13,15,25,27,29,31],[12,14,16,26,28,30,32]]){
       let armPath=null;
       const socket=shouldersToJoin.get(s);
@@ -891,7 +991,7 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
         const short=armPath.length===2;
         const cuff=wristLoops.get(w)?.loop?{}:null;
         tube(roundedJoints(armPath,span*.10),t=>{const r=radius*profile(armWidth,lerp(socket ? .24 : .15,short ? .52 : 1,t));return {rx:r,rz:r*.89};},
-          {segments:28,sides:socket?socket.loop.length:28,fit:.87,color:tintCloth,material:.94,surface:"arm",armSide:s,extendBelow:!!references&&!!cuff,openEnd:cuff});
+          {segments:28,sides:socket?socket.loop.length:28,fit:.87,color:tintCloth,material:.94,surface:"arm",armSide:s,palmIds:handBones.get(w),wristRoll:true,extendBelow:!!references&&!!cuff,openEnd:cuff});
         if(cuff?.loop)linkRings(cuff.loop,wristLoops.get(w).loop);
       }
       const h=knee-2;
@@ -920,13 +1020,32 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
   alignNeck(base,head?.positions);
   if(neckAttachment&&atlas){
     for(const {start,influence} of neckAttachment.rows)for(let k=0;k<neckAttachment.ring.length;k++){
-      const v=start+k,angle=2*Math.PI*k/neckAttachment.ring.length;
+      const v=start+k;
       const tex=atlas.front(base[3*v],base[3*v+1]);
-      uv[2*v]=tex[0];uv[2*v+1]=tex[1];plates[v]=2;
-      weights[v]=lerp(weights[v],smooth(-.02,.46,Math.sin(angle)),influence);
-      const donor=head.colors.subarray(3*neckAttachment.ring[k],3*neckAttachment.ring[k]+3);
-      for(let d=0;d<3;d++)colors[3*v+d]=lerp(colors[3*v+d],donor[d],influence);
+      uv[2*v]=tex[0];uv[2*v+1]=tex[1];
+      // Leave the shirt on the thorax. Skin at the neckline borrows only from
+      // the observed throat; sampling the frontal checked shirt here repeats its collar.
+      const oldWeight=weights[v],blend=influence**1.5;
+      const newWeight=oldWeight*(1-blend),donor=head.neckAlbedo[k];
+      for(let d=0;d<3;d++)
+        colors[3*v+d]=(donor[d]*blend+colors[3*v+d]*(1-oldWeight)*(1-blend))/Math.max(1e-7,1-newWeight);
+      weights[v]=newWeight;
     }
+  }
+  function skinShoulders(out){
+    for(const {id,ids,coeff} of bridges)for(let d=0;d<3;d++)
+      out[3*id+d]=coeff.reduce((sum,c,k)=>sum+c*out[3*ids[k]+d],0);
+  }
+  skinShoulders(base);
+  let referenceUV=null;
+  if(atlas?.sideProjection&&head){
+    referenceUV=new Float32Array(base.length);
+    const [,,chinZ]=head.chinPoint;
+    handUV.forEach((coord,i)=>referenceUV.set(coord,3*i));
+    sideClothWeights.forEach((w,i)=>{
+      const u=(chinZ-base[3*i+2])/head.height,v=(base[3*i+1]-head.chinPoint[1])/head.height;
+      referenceUV.set(atlas.sideProjection((317*u-36)/238,(317*v+29)/391,w),3*i);
+    });
   }
   function poseFrame(frame={},out){
     if(!out)out=new Float32Array(base.length);
@@ -934,13 +1053,18 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
       out.set(base);alignNeck(out,head?.current||head?.positions);return out;
     }
     for(let i=0;i<rest.length;i++){const p=now[i],r=rest[i];p.x=r.x;p.y=r.y;p.z=r.z;drivers[i]?.(frame,p);}
+    const palmFrames=new Map();
     for(const rows of sweeps){
+      const ids=rows.palmIds;
+      if(ids&&!palmFrames.has(ids))palmFrames.set(ids,handAxes(now,ids));
+      const basis=palmFrames.get(ids);
       for(const r of rows){const a=now[r.a],b=now[r.b];r.live.x=lerp(a.x,b.x,r.f);r.live.y=lerp(a.y,b.y,r.f);r.live.z=lerp(a.z,b.z,r.f);}
       for(let j=0;j<rows.length;j++){
-        const r=rows[j],c=r.live,axis=frameAt(rows[Math.max(0,j-1)].live,rows[Math.min(rows.length-1,j+1)].live,r.axis);
+        const r=rows[j],c=r.live,a=rows[Math.max(0,j-1)].live,b=rows[Math.min(rows.length-1,j+1)].live;
+        const axis=basis?sectionFrame(a,b,basis,r.axis,r.twist):frameAt(a,b,r.axis);
         for(const {start,offset} of r.bands)for(let k=0;k<offset.length;k+=3){
           const v=start*3+k,side=offset[k],deep=offset[k+1];
-          out[v]=c.x+axis.x*side+axis.fx*deep;out[v+1]=c.y+axis.y*side+axis.fy*deep;out[v+2]=c.z+axis.fz*deep+offset[k+2];
+          out[v]=c.x+axis.x*side+axis.fx*deep;out[v+1]=c.y+axis.y*side+axis.fy*deep;out[v+2]=c.z+(axis.sz||0)*side+axis.fz*deep+offset[k+2];
         }
         if(r.cap!==undefined){const i=r.cap*3;out[i]=c.x;out[i+1]=c.y;out[i+2]=c.z;}
       }
@@ -952,11 +1076,9 @@ export function buildFigure3D({photo,aspect,face,hands=[],pose,mask=pose?.mask,s
       for(const [v,w] of moved){out[3*v+1]-=elevation*.10*w;out[3*v+2]+=elevation*.035*w;}
     }
     alignNeck(out,head?.current||head?.positions);
-    for(const {id,ids,coeff} of bridges)for(let d=0;d<3;d++){
-      out[3*id+d]=coeff[0]*out[3*ids[0]+d]+coeff[1]*out[3*ids[1]+d]+coeff[2]*out[3*ids[2]+d]+coeff[3]*out[3*ids[3]+d];
-    }
+    skinShoulders(out);
     return out;
   }
-  return {inferredPalms,neckStart:neckAttachment?.body,plateOffset:atlas?.plateOffset||0,plateMix:new Float32Array(plates),texture:atlas?.canvas,positions:base,uv:new Float32Array(uv),colors:new Float32Array(colors),photoWeight:new Float32Array(weights),
+  return {armBindings:Object.fromEntries([11,12,13,14,15,16].filter(i=>body[i]).map(i=>[i,[body[i].x,body[i].y,body[i].z]])),wristBindings:Object.fromEntries([...handRoots].map(([joint,index])=>[joint,rest[index]])),inferredPalms,referenceUV,neckStart:neckAttachment?.body,plateOffset:atlas?.plateOffset||0,plateMix:new Float32Array(plates),texture:atlas?.canvas,positions:base,uv:new Float32Array(uv),colors:new Float32Array(colors),photoWeight:new Float32Array(weights),
     indices:positions.length/3>65535?new Uint32Array(indices):new Uint16Array(indices),pose:poseFrame};
 }

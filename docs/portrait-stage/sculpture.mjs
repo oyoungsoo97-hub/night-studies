@@ -1,5 +1,5 @@
-import {buildHead3D} from './head3d.mjs?v=4cacebc87b';
-import {buildFigure3D} from './figure3d.mjs?v=0d4776ec46';
+import {buildHead3D} from './head3d.mjs?v=86b29f0508';
+import {buildFigure3D} from './figure3d.mjs?v=9e3b591c37';
 
 export function normalsFor(points,triangles,out=new Float32Array(points.length)){
   out.fill(0);
@@ -42,6 +42,11 @@ export function buildSculpture(photo,{face,hands,pose,aspect,references}){
     }
   }
   function smoothNeck(){
+    for(const [a,b] of head?.faceSeam||[]){
+      const n=head.normals,first=a*3,second=b*3;
+      const merged=[0,1,2].map(d=>n[first+d]+n[second+d]),length=Math.hypot(...merged)||1;
+      for(let d=0;d<3;d++)n[first+d]=n[second+d]=merged[d]/length;
+    }
     if(figure?.neckStart==null)return;
     for(const [k,hi] of head.neckRing.entries()){
       const h=hi*3,b=(figure.neckStart+k)*3;

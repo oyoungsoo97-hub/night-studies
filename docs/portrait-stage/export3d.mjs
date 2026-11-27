@@ -44,6 +44,15 @@ async function blendMap(part,src,ids){
       const first=4*(py*w+Math.min(w-1,px+Math.floor(mix)*offset)),second=4*(py*w+Math.min(w-1,px+Math.ceil(mix)*offset)),fraction=mix-Math.floor(mix);
       const f=Math.max(0,Math.min(1,part.photoWeight[a]*A+part.photoWeight[b]*B+part.photoWeight[c]*C)),dst=((top+y)*W+left+x)*4;
       for(let k=0;k<3;k++)out[dst+k]=(pixels[first+k]+fraction*(pixels[second+k]-pixels[first+k]))*f+255*(1-f)*(part.colors[a*3+k]*A+part.colors[b*3+k]*B+part.colors[c*3+k]*C);
+      const ref=part.referenceUV;
+      if(ref){
+        const interp=k=>ref[3*a+k]*A+ref[3*b+k]*B+ref[3*c+k]*C,weight=interp(2);
+        if(weight>.001){
+          const uv=k=>(ref[3*a+k]*ref[3*a+2]*A+ref[3*b+k]*ref[3*b+2]*B+ref[3*c+k]*ref[3*c+2]*C)/weight;
+          const sx=Math.max(0,Math.min(w-1,Math.floor(uv(0)*w))),sy=Math.max(0,Math.min(h-1,Math.floor(uv(1)*h)));
+          for(let k=0;k<3;k++)out[dst+k]+=(pixels[4*(sy*w+sx)+k]-out[dst+k])*weight;
+        }
+      }
       out[dst+3]=255;
     }
     if(t%512===511)await wait();
@@ -74,7 +83,8 @@ export async function exportSculpture(model,attribution=null){
     for(let i=0;i<p.indices.length;i+=3){
       const a=p.indices[i],b=p.indices[i+1],c=p.indices[i+2],w=p.photoWeight;
       const hasOverlay=p.plateMix&&Math.max(p.plateMix[a],p.plateMix[b],p.plateMix[c])>.001;
-      const group=!hasOverlay&&Math.min(w[a],w[b],w[c])>=.998?pure:Math.max(w[a],w[b],w[c])<.002?solid:mixed;
+      const side=p.referenceUV&&Math.max(...[a,b,c].map(i=>p.referenceUV[i*3+2]))>.001;
+      const group=side?mixed:!hasOverlay&&Math.min(w[a],w[b],w[c])>=.998?pure:Math.max(w[a],w[b],w[c])<.002?solid:mixed;
       group.push(a,c,b);
     }
     for(const ids of [pure,mixed,solid]){
