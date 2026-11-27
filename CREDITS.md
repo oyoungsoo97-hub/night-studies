@@ -1,10 +1,20 @@
 # Credits · 제작 정보 · Bildnachweise
 
-**English.** The station, carriage, corridor, figures, diner, portrait, lake and spell textures are original generated imagery for Night Studies. The portrait shows a fictional adult with both palms visible, photographed against a teal studio backdrop. It was generated for this release with the built-in ImageGen tool. The Foley instruments and the stereo spell sounds are synthesized. The camera stages use local landmark detection.
+**English.** The station, carriage, corridor, figures, diner, original studio portrait, lake and spell textures are original generated imagery for Night Studies. The original Atelier No. 1 portrait shows a fictional adult with both palms visible, photographed against a teal studio backdrop. It was generated for this release with the built-in ImageGen tool. The Foley instruments and the stereo spell sounds are synthesized. The camera stages use local landmark detection.
 
-**한국어.** 승강장·열차·복도·인물·식당·초상·호수·주문 텍스처 이미지는 Night Studies를 위해 생성했습니다. 기본 초상은 청록색 스튜디오 배경 앞에서 양손을 편 가상의 성인을 묘사합니다. 이번 배포용으로 내장 ImageGen을 사용했습니다. 폴리 악기와 스테레오 주문음은 직접 합성했으며, 카메라 무대의 좌표 추적은 기기 안에서 실행됩니다.
+**한국어.** 승강장·열차·복도·인물·식당·초상·호수·주문 텍스처 이미지는 Night Studies를 위해 생성했습니다. 이전 기본 예시인 아틀리에 1번은 청록색 스튜디오 배경 앞에서 양손을 편 가상의 성인을 묘사합니다. 이번 배포용으로 내장 ImageGen을 사용했습니다. 폴리 악기와 스테레오 주문음은 직접 합성했으며, 카메라 무대의 좌표 추적은 기기 안에서 실행됩니다.
 
-**Deutsch.** Bahnhof, Zug, Flur, Figuren, Diner, Porträt, See und Zaubertexturen wurden für Night Studies generiert. Das mit dem integrierten ImageGen erstellte Porträt zeigt eine fiktive erwachsene Person mit offenen Handflächen vor einem petrolfarbenen Studiohintergrund. Die Foley-Instrumente und die Stereo-Zauberklänge werden synthetisiert. Die Kamerabühnen erfassen Bewegungspunkte lokal.
+**Deutsch.** Bahnhof, Zug, Flur, Figuren, Diner, Porträt, See und Zaubertexturen wurden für Night Studies generiert. Das ursprüngliche, mit dem integrierten ImageGen erstellte Atelierporträt zeigt eine fiktive erwachsene Person mit offenen Handflächen vor einem petrolfarbenen Studiohintergrund. Die Foley-Instrumente und die Stereo-Zauberklänge werden synthetisiert. Die Kamerabühnen erfassen Bewegungspunkte lokal.
+
+## Winter (aespa) · 에스파 윈터
+
+**한국어.** 기본 예시는 2025년 3월 26일 폴로 랄프 로렌 행사에서 윈터가 손인사하는 티비텐(TV10) 영상의 한 장면입니다. 사진을 상반신 중심으로 잘라 WebP로 변환하고 인물의 3D 메시와 텍스처를 재구성했습니다.
+
+**English.** The default study uses a frame of Winter waving at the Polo Ralph Lauren photo call on 26 March 2025. The source frame by TV10 was cropped and converted to WebP, then used for the reconstructed mesh, textures and gallery views.
+
+**Deutsch.** Die Standardstudie zeigt Winter beim Winken auf dem Fototermin von Polo Ralph Lauren am 26. März 2025. Das Standbild von TV10 wurde zugeschnitten, in WebP umgewandelt und als Grundlage für das 3D-Modell, seine Texturen und die Galerieansichten verwendet.
+
+[Original · 티비텐 (TV10) · Wikimedia Commons](https://commons.wikimedia.org/?curid=162907797) · [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/)
 
 ## MediaPipe · 얼굴·손·몸 추적 · Gesichts-, Hand- und Körpertracking
 

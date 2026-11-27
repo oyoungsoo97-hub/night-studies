@@ -50,9 +50,9 @@ async function blendMap(part,src,ids){
   }
   ctx.putImageData(im,0,0);return {el,uv};
 }
-export async function exportSculpture(model){
+export async function exportSculpture(model,attribution=null){
   const parts=model.parts.map(p=>({...p,current:p.current.slice(),normals:p.normals.slice()}));
-  const gltf={asset:{version:'2.0',generator:'Portrait Loom'},scene:0,scenes:[{nodes:[]}],nodes:[],meshes:[],buffers:[{byteLength:0}],bufferViews:[],accessors:[],images:[],textures:[],materials:[],
+  const gltf={asset:{version:'2.0',generator:'Portrait Loom',...attribution},scene:0,scenes:[{nodes:[]}],nodes:[],meshes:[],buffers:[{byteLength:0}],bufferViews:[],accessors:[],images:[],textures:[],materials:[],
     samplers:[{magFilter:9729,minFilter:9729,wrapS:33071,wrapT:33071}]};
   const chunks=[];let length=0;
   function view(data,target){

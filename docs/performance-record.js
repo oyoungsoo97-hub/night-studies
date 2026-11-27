@@ -40,7 +40,12 @@
     try{
       const canvas=document.createElement('canvas'), scale=Math.min(1,1280/Math.max(source.width,source.height));
       canvas.width=Math.max(2,2*Math.round(source.width*scale/2));canvas.height=Math.max(2,2*Math.round(source.height*scale/2));
-      const ctx=canvas.getContext('2d',{alpha:false});ctx.drawImage(source,0,0,canvas.width,canvas.height);
+      const ctx=canvas.getContext('2d',{alpha:false});
+      function drawFrame(){
+        ctx.drawImage(source,0,0,canvas.width,canvas.height);
+        if(host.dataset.recordStage==='portrait')source.dispatchEvent(new CustomEvent('night-record-frame',{detail:ctx}));
+      }
+      drawFrame();
       stream=canvas.captureStream(24);
       const mix=audioTrack();
       if(mix)stream.addTrack(mix.clone());
@@ -60,7 +65,7 @@
         recorder=null;labels();
       };
       let last=0;started=performance.now();problem=false;
-      function tick(now){if(!recorder||recorder.state!=='recording')return;if(now-last>=1000/25){ctx.drawImage(source,0,0,canvas.width,canvas.height);last=now;}paint=requestAnimationFrame(tick);}
+      function tick(now){if(!recorder||recorder.state!=='recording')return;if(now-last>=1000/25){drawFrame();last=now;}paint=requestAnimationFrame(tick);}
       recorder.start(250);paint=requestAnimationFrame(tick);labels();
       clock=setInterval(()=>{if(performance.now()-started>=maxSeconds*1000)finish();else labels();},200);
     }catch{cleanup();recorder=null;problem=true;labels();}

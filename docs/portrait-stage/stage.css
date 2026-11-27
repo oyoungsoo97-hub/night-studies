@@ -10,3 +10,6 @@
 .render-desk{display:flex;flex-wrap:wrap;align-items:center;gap:12px 22px;padding:12px 15px;background:#e2ded7;border:1px solid #ccc3c7;border-top:0}
 .view-control,.light-control,.file-actions{display:flex;align-items:center;gap:8px}.view-control,.light-control{font-size:14px}.view-control input{width:clamp(60px,8vw,120px);accent-color:#645168}.view-control output{min-width:3.3ch;font:13px ui-monospace,monospace}.light-control select{padding:5px;border:1px solid #afa3ab;background:#f4f0ea;font:inherit}.film-note{gap:12px;flex-wrap:wrap}.film-note #modelStatus{margin-inline-start:auto}.file-actions{margin-left:0}.framing #portrait{touch-action:none}.render-desk .link{margin-inline-start:auto}.file-actions button{min-height:38px}
 @media(max-width:650px){.render-desk{gap:9px 16px}.render-desk .link{margin-inline-start:0}.file-actions{margin-inline-start:auto}.film-note #modelStatus{flex:1;text-align:end}.film-note{row-gap:7px}}
+
+.source-credit{margin:.6rem 0 0;font-size:.875rem;line-height:1.5;color:inherit}
+.source-credit a{color:inherit;text-underline-offset:.15em}
