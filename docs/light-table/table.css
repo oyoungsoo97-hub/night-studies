@@ -88,3 +88,50 @@ dialog::backdrop{background:#10130ee6}
 @media(max-width:350px){.frame .meta span{display:none}.workbench{width:calc(100% - 20px)}}
 
 @media(hover:none) and (pointer:coarse){.key-help{display:none}}
+
+/* Working tools surrounding the photograph stay separate from the print itself. */
+.project-actions,.source-actions,.source-title,.source-toolbar,.source-note{display:flex;align-items:center;gap:12px}
+.project-actions button,.source-actions button,.source-note button{min-height:40px;padding:6px 12px;border:1px solid var(--line);border-radius:0;background:transparent;color:var(--ink);font:650 .86rem var(--sans)}
+.project-actions button:last-child{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.source-toolbar,.source-note{justify-content:space-between}
+.source-panel{border-top:1px solid var(--ink);padding:9px 0 15px;margin:0 0 18px}
+.source-title .mono{font-size:.8rem;color:var(--muted)}
+.source-actions button{background:#e3e0d6;border-color:#b4b3a8}
+.source-list{display:flex;gap:7px;overflow-x:auto;padding:3px 1px 6px;scrollbar-width:thin}
+.source-chip{display:flex;align-items:center;flex:0 0 auto;max-width:235px;min-width:0;min-height:46px;padding:4px 10px 4px 4px;gap:8px;border:1px solid var(--line);background:#e7e6de;color:var(--ink);font-size:.83rem}
+.source-chip[aria-pressed=true]{border:1px solid var(--ink);background:#252723;color:white}
+.source-chip img{width:44px;height:32px;object-fit:cover;background:#77796e}
+.source-chip span,#sourceName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.source-note{align-items:baseline;flex-wrap:wrap;gap:4px 15px}
+#sourceStatus,.source-note p{font-size:.82rem;color:var(--muted)}
+#sourceStatus:not(:empty){margin-top:4px;color:var(--accent)}
+.source-note button{border:0;border-bottom:1px solid var(--line);min-height:30px;padding:1px 4px;font-size:.8rem}
+.source-panel.drag-over,.film-bed.drag-over{outline:3px dashed var(--accent);outline-offset:5px}
+.photo-mat{display:grid;place-items:center;background:#1f201e}
+.stage{width:min(100%,var(--stage-max,1400px),var(--stage-vh,120vh))}
+.upper-rail{gap:10px}
+#resolution{flex-shrink:0}
+.caption-field,.proof-controls label{display:grid;gap:4px;font-size:.86rem;font-weight:650}
+.caption-field{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;margin:0 0 14px}
+.caption-field>span{color:var(--muted);font-size:.76rem;font-weight:400}
+#caption,.proof-controls select,#storyTitle{font:400 .95rem var(--sans);color:var(--ink);background:#f6f5ef;border:1px solid #b7b8ad;border-radius:0;min-height:40px;padding:7px 9px;width:100%;max-width:100%}
+.frame .meta{min-width:0}.frame .meta span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#proofDialog{width:min(1240px,96vw);padding:clamp(15px,2.3vw,28px);overflow:auto}
+.proof-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,230px);gap:clamp(12px,2.4vw,28px);align-items:start}
+.print-mat{background:#d6d5cd;padding:clamp(10px,2vw,26px);display:grid;place-items:center;min-width:0;min-height:230px}
+#proofCanvas{width:auto;height:auto;max-width:100%;max-height:65vh;max-height:65dvh}
+.proof-controls{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;gap:10px;margin:0}
+.proof-controls label{min-width:0}
+#dimensions{font-size:.8rem;color:var(--muted)}
+@media (max-width:640px){
+.site-bar{gap:5px}.project-actions{gap:5px}.project-actions button{min-height:36px;font-size:.76rem;padding:4px 7px}
+.source-panel{margin-bottom:10px;padding-bottom:6px}.source-chip{min-height:40px}.source-toolbar{gap:5px}.source-toolbar h2{font-size:.98rem}
+.source-title{gap:6px}.source-note p{font-size:.76rem}.source-note button{font-size:.75rem}.source-actions button{min-height:34px}
+.console .caption-field{grid-column:1/-1;margin:1px 0 0;display:grid;grid-template-columns:auto auto 1fr;gap:4px;align-items:center}
+.caption-field #caption{min-height:36px;margin-left:4px;width:calc(100% - 4px)}
+.console #capture,.console #cancelEdit{grid-column:1/-1}
+.glass{grid-row:2;align-self:center}
+.proof-layout{grid-template-columns:1fr}.proof-controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 10px}
+.proof-controls>label:first-child,.proof-controls>button,.proof-controls #printStatus{grid-column:1/-1}.proof-controls #dimensions{align-self:end;padding-bottom:10px}
+.print-mat{min-height:90px;padding:8px}#proofCanvas{max-height:37vh;max-height:37dvh}
+}

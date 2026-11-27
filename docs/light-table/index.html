@@ -3,31 +3,46 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#eae9e4">
-  <meta name="description" content="비 오는 밤의 식당을 확대경으로 살피고 세 컷의 사진 이야기로 인화하세요.">
+  <meta name="theme-color" content="#eeede7">
+  <meta name="description" content="내 사진에서 세 컷을 고르고 순서, 캡션, 인화지와 레이아웃을 편집하는 개인 사진 작업대.">
   <title>Light Table · Night Studies</title>
-  <link rel="stylesheet" href="table.css">
-  <script src="table.js" defer></script>
+  <link rel="icon" href="../mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="table.css?v=aa6cdda67d">
+  <script src="../library.js?v=04d6f1647b" defer></script>
+  <script src="table.js?v=cd4aea46c8" defer></script>
 </head>
 <body>
   <main class="workbench">
-    <nav class="site-bar" aria-label="작품 탐색">
+    <nav class="site-bar" aria-label="작품과 프로젝트">
       <a href="../index.html" class="home"><span class="aperture" aria-hidden="true"></span>Night Studies</a>
-      <span lang="en">Photography</span>
+      <div class="project-actions"><button type="button" data-library>작업 보관함</button><button type="button" data-save-project>프로젝트 저장</button></div>
     </nav>
     <header class="intro">
       <h1 lang="en">Light <i>Table</i></h1>
-      <p>비 오는 밤의 식당에서 세 장면을 찾아보세요. <br>고른 순서가 나만의 이야기가 됩니다.</p>
+      <p>사진에서 세 컷을 고르고 순서를 편집하세요. <br>한 장의 사진 이야기로 인화할 수 있습니다.</p>
     </header>
+    <section id="sourcePanel" class="source-panel" aria-labelledby="sourceHeading">
+      <div class="source-toolbar">
+        <div class="source-title"><h2 id="sourceHeading">원판 보관대</h2><span class="mono" id="sourceCount">1 / 6</span></div>
+        <div class="source-actions">
+          <button id="importPhoto" type="button" class="add-photo">＋ 사진 추가</button>
+          <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" multiple hidden>
+        </div>
+      </div>
+      <div id="sources" class="source-list" aria-label="편집할 원판 선택"></div>
+      <div class="source-note"><p id="importHint">사진을 여기에 놓거나 추가하세요. JPG · PNG · WebP, 장당 20 MB까지. 사진은 이 기기에서 처리됩니다.</p>
+        <button type="button" id="discardSource" hidden>원판 빼기</button></div>
+      <p id="sourceStatus" role="status" aria-live="polite"></p>
+    </section>
     <div class="desk-grid">
       <section class="film-bed" aria-label="확대할 사진 원판">
-        <div class="rail upper-rail"><span>사진 원판</span><span id="resolution">불러오는 중</span></div>
-        <div class="stage" id="stage" tabindex="0" role="group" aria-label="사진 위의 자르기 위치" aria-describedby="stageHelp">
+        <div class="rail upper-rail"><span id="sourceName">비 오는 밤의 식당</span><span id="resolution">불러오는 중</span></div>
+        <div class="photo-mat"><div class="stage" id="stage" tabindex="0" role="group" aria-label="사진 위의 자르기 위치" aria-describedby="stageHelp">
           <img id="sourcePhoto" src="../assets/diner.jpg" alt="비 내리는 밤, 유리창 안팎의 풍경이 겹치는 식당" draggable="false">
           <canvas id="overlay" aria-hidden="true"></canvas>
-          <div id="loadError" class="load-error" hidden>사진을 불러오지 못했습니다. <button id="retry" type="button">다시 불러오기</button></div>
-        </div>
-        <div class="rail film-footer" aria-hidden="true"><span class="sprockets"></span><span>D I N E R</span><span class="sprockets"></span></div>
+          <div id="loadError" class="load-error" hidden>원판을 열 수 없습니다. <button id="retry" type="button">다시 불러오기</button></div>
+        </div></div>
+        <div class="rail film-footer" aria-hidden="true"><span class="sprockets"></span><span>LIGHT TABLE</span><span class="sprockets"></span></div>
         <p id="stageHelp" class="stage-help">사진 위를 누르거나 드래그해 탐색하세요.<span class="key-help"> 방향키로 미세 조정하고 Enter로 담을 수 있습니다.</span></p>
       </section>
       <section class="console" aria-labelledby="loupeTitle">
@@ -35,9 +50,10 @@
         <div class="glass"><canvas id="detail" width="480" height="360" aria-label="선택한 사진 영역 미리보기"></canvas></div>
         <div class="zoom-control">
           <label for="zoom">확대 배율</label><output id="zoomValue" for="zoom">3.0×</output>
-          <input type="range" id="zoom" min="1.5" max="7" step="0.1" value="3" aria-label="확대 배율">
-          <div class="scale" aria-hidden="true"><span>1.5×</span><span>7×</span></div>
+          <input type="range" id="zoom" min="1" max="7" step="0.1" value="3" aria-label="확대 배율">
+          <div class="scale" aria-hidden="true"><span>1×</span><span>7×</span></div>
         </div>
+        <label class="caption-field" for="caption">컷 캡션 <span>선택</span><input type="text" id="caption" maxlength="40" placeholder="이 장면에 남길 한 줄"></label>
         <button id="capture" class="action orange" disabled>첫 컷 담기</button>
         <button id="cancelEdit" class="action secondary" hidden>편집 취소</button>
         <p id="notice" class="notice" role="status" aria-live="polite"></p>
@@ -45,23 +61,26 @@
     </div>
     <section class="contact" aria-labelledby="stripHeading">
       <div class="strip-head"><div class="strip-title"><h2 id="stripHeading">콘택트 시트</h2><span id="count" class="mono">0 / 3</span></div>
-        <button id="proof" class="text-button" disabled>인화 미리보기</button>
+        <button id="proof" class="text-button" disabled>인화 설정</button>
       </div>
       <div id="frames" class="frames" aria-label="이야기 순서"></div>
       <div id="frameTools" class="frame-tools" aria-label="선택한 컷 편집" hidden>
         <strong id="selectedLabel"></strong>
-        <button type="button" id="earlier">앞으로 이동</button>
-        <button type="button" id="later">뒤로 이동</button>
-        <button type="button" id="remove">컷 빼기</button>
+        <button type="button" id="earlier">앞으로 이동</button><button type="button" id="later">뒤로 이동</button><button type="button" id="remove">컷 빼기</button>
       </div>
     </section>
   </main>
   <dialog id="proofDialog" aria-labelledby="proofTitle">
-    <div class="proof-head"><h2 id="proofTitle">인화 미리보기</h2><button id="closeProof" class="text-button">닫기</button></div>
-    <canvas id="proofCanvas" width="2400" height="1060" aria-label="선택한 세 컷을 순서대로 담은 인화지"></canvas>
-    <div class="proof-controls"><label for="storyTitle">작품 제목<input id="storyTitle" type="text" maxlength="45" value="비 오는 밤의 식당"></label>
-      <button id="download" class="action orange">PNG 인화 저장</button></div>
-    <p id="printStatus" role="status" aria-live="polite"></p>
+    <div class="proof-head"><h2 id="proofTitle">인화 설정</h2><button id="closeProof" class="text-button">닫기</button></div>
+    <div class="proof-layout"><div class="print-mat"><canvas id="proofCanvas" width="2400" height="1060" aria-label="선택한 세 컷을 순서대로 담은 인화지"></canvas></div>
+      <div class="proof-controls">
+        <label for="storyTitle">작품 제목<input id="storyTitle" type="text" maxlength="45" value="비 오는 밤의 식당"></label>
+        <label for="layout">레이아웃<select id="layout"><option value="strip">가로 세 컷</option><option value="column">세로 필름</option><option value="cover">표지와 두 컷</option></select></label>
+        <label for="paper">인화지<select id="paper"><option value="ivory">아이보리</option><option value="white">순백</option><option value="carbon">카본 블랙</option></select></label>
+        <label for="format">파일 형식<select id="format"><option value="png">PNG · 무손실</option><option value="jpeg">JPEG · 공유용</option></select></label>
+        <span id="dimensions" class="mono"></span><button id="download" class="action orange">PNG 인화 저장</button>
+        <p id="printStatus" role="status" aria-live="polite"></p>
+      </div>
+    </div>
   </dialog>
-</body>
-</html>
+</body></html>

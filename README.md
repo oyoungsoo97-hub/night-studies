@@ -1,39 +1,37 @@
 # Night Studies · After Hours
 
-Three short browser works set at night. Tear a poster, perform the sound for a silent film, or cut three photographs from a single frame.
+영화 포스터, 폴리 사운드트랙, 사진 시퀀스를 만드는 세 개의 브라우저 편집실. 각 편집실의 하우스 에디션을 고쳐 쓰거나, 자기 사진과 영상으로 시작할 수 있습니다.
 
-**[Enter the exhibition](https://oyoungsoo97-hub.github.io/night-studies/)**
+**[Night Studies 열기](https://oyoungsoo97-hub.github.io/night-studies/)**
 
-[![Three Night Studies covers: a torn transit print, a dim corridor and a rainy diner](media/night-studies.webp)](https://oyoungsoo97-hub.github.io/night-studies/)
+[![Night Studies 편집실과 실제 출력한 마지막 안내방송 포스터](media/night-studies.webp)](https://oyoungsoo97-hub.github.io/night-studies/)
 
-| Work | How to play |
+| 편집실 | 작업과 출력 |
 | --- | --- |
-| [LAST TRAIN](https://oyoungsoo97-hub.github.io/night-studies/last-train/) | Drag across the printed poster to reveal a midnight platform. Capture the moment as a PNG. The one-touch control also opens the scene. |
-| [FOLEY CLUB](https://oyoungsoo97-hub.github.io/night-studies/foley-club/) | Perform footsteps, keys and a hinge against the same eight-second film. Record two takes and listen to them back to back. |
-| [LIGHT TABLE](https://oyoungsoo97-hub.github.io/night-studies/light-table/) | Inspect the diner through a loupe. Choose three crops, arrange them and print a 2400 × 1060 triptych. |
+| [Last Train](https://oyoungsoo97-hub.github.io/night-studies/last-train/?edition=house) | 종이를 찢어 드러낼 장면을 정하고 12초의 필름에서 한 프레임을 고릅니다. 배경에 내 사진을 넣고 제목, 부제, 인쇄판, 판형을 편집해 PNG로 출력합니다. |
+| [Foley Club](https://oyoungsoo97-hub.github.io/night-studies/foley-club/?edition=house) | 무성 장면에 두 테이크의 효과음을 입힙니다. 큐의 시간, 음량, 좌우 위치를 조절하고 선택한 테이크를 48 kHz 스테레오 WAV로 출력합니다. MP4·WebM 클립도 사용할 수 있습니다(최대 60초, 12 MiB). |
+| [Light Table](https://oyoungsoo97-hub.github.io/night-studies/light-table/?edition=house) | 원판에서 세 컷을 골라 구도와 캡션을 편집합니다. 내 사진 다섯 장까지 더할 수 있고, 가로·세로·표지 레이아웃과 인화지를 골라 PNG 또는 JPEG로 출력합니다. |
 
-### 한국어
+### 저장과 기기 간 이동
 
-**막차**에서는 포스터 위를 길게 드래그하세요. 찢어진 자리에 승강장이 나타나고 12초 동안 막차가 지나갑니다. 손을 놓은 순간을 PNG로 저장할 수 있습니다. 카메라로 조작하려면 **손으로 찢기**를 누르고 양손을 모았다 벌리세요. 카메라 없이도 마우스, 터치 또는 키보드로 작품 전체를 체험할 수 있습니다.
+편집실에서 **프로젝트 저장**을 누르면 이름을 붙여 현재 브라우저의 작업 보관함에 남길 수 있습니다. 기존 작업을 열면 변경사항을 저장하거나 사본을 만들 수 있습니다. 홈의 최근 작업에서 이어서 편집하세요.
 
-**폴리 클럽**에서는 A 녹음을 시작하고 장면에 맞춰 자갈, 열쇠, 경첩을 연주하세요. 키보드의 1·2·3도 사용할 수 있습니다. 테이크 B에는 다른 타이밍으로 연주한 뒤 두 버전을 이어 들어보세요. 비교 링크를 복사하면 다른 사람도 같은 두 테이크를 들을 수 있습니다.
+다른 브라우저나 기기로 옮기려면 보관함의 **관리 → 파일 내보내기**로 프로젝트 파일(`.nightstudy`)을 내려받고, 새 기기의 **작업 보관함 → 파일 가져오기**로 엽니다. 직접 추가한 사진과 영상도 파일에 포함됩니다. 사이트 데이터를 지우기 전에는 프로젝트 파일을 보관해 주세요. 포스터·사진·WAV는 완성본이고, 프로젝트 파일에는 다시 편집할 수 있는 원본과 설정이 들어갑니다.
 
-**라이트 테이블**에서는 빗속 식당 사진 위로 확대경을 움직여 세 컷을 고릅니다. 컷의 순서와 제목을 정하고 완성된 사진을 PNG로 저장하세요.
+### 로컬 실행
 
-### 로컬에서 열기
-
-Python 3가 설치된 컴퓨터에서 압축을 풀고 macOS에서는 **Start.command**를 열거나 폴더에서 다음 명령을 실행하세요.
+Python 3를 설치한 컴퓨터에서 압축을 풀고 macOS의 **Start.command**를 열거나, 압축을 푼 폴더에서 실행하세요.
 
 ```sh
 python3 run.py
 ```
 
-Windows에서는 `py -3 run.py`로 실행할 수 있습니다. 실행 중 표시되는 localhost 주소에서 작품을 엽니다. 터미널에서 Ctrl+C를 누르면 종료됩니다.
+Windows에서는 `py -3 run.py`를 사용할 수 있습니다. 기본 로컬 주소는 `http://127.0.0.1:17473/`입니다. 같은 브라우저와 주소로 열면 작업 보관함을 계속 쓸 수 있습니다. 종료하려면 터미널에서 Ctrl+C를 누르세요.
 
 ### Media and privacy
 
-The stills and cutout figures were created for this collection with image generation. Train movement, paper tears, film staging, the loupe and the printable compositions are drawn in the browser. Foley effects are synthesized by Web Audio.
+Night Studies runs locally in the browser. Imported media and named projects are kept on the device. A Foley comparison link for the built-in film contains sound cue data in its URL fragment. To share a custom film, export its project file.
 
-The camera is optional and is requested only in LAST TRAIN. Its frames are processed on the device. The first use downloads Google's pinned hand landmark model (about 8 MB), verifies its SHA-256 and reuses it when browser storage permits. Mouse, touch and keyboard play work from the local files without downloading a model. Foley tracks store effect timings and variations, with no microphone recording. Shared comparison links encode both takes in the URL fragment. The visitor can listen without overwriting their own saved performances. Browser storage holds takes and light-table edits locally when available.
+Hand tracking in Last Train is optional. The browser asks for the camera only when you enable it. Its first use downloads Google's pinned hand landmark model (about 8 MB), verifies its SHA-256, and caches it when browser storage permits. Camera frames are processed on the device. The pointer, keyboard and touch controls work without the model. Foley effects are synthesized with Web Audio.
 
-[Asset sources and third-party notices](CREDITS.md)
+[Artwork, fonts, and third-party credits](CREDITS.md)

@@ -1,48 +1,48 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#161716">
-  <meta name="description" content="한 장의 포스터를 찢어 막차가 지나가는 열두 초를 열어보세요.">
-  <title>Last Train · Night Studies</title>
-  <link rel="icon" href="../mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="train.css">
-  <script src="train.js" defer></script>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171919"><meta name="description" content="막차가 지나는 열두 초에서 한 장면을 골라 활자와 찢어진 종이로 영화 포스터를 만드는 작업실.">
+  <title>Last Train — 포스터 작업실 · Night Studies</title>
+  <link rel="icon" href="../mark.svg" type="image/svg+xml"><link rel="stylesheet" href="train.css?v=06afa9a368">
+  <script src="../library.js?v=04d6f1647b" defer></script><script src="print.js?v=4ea0a0b32b" defer></script><script src="train.js?v=8f65aeed9c" defer></script>
 </head>
 <body>
-<header class="mast">
-  <a href="../index.html" class="home" aria-label="Night Studies 작품 목록"><img class="brand-mark" src="../mark.svg" alt="">Night Studies</a>
-  <span class="medium">INTERACTIVE POSTER</span>
-</header>
-<main>
- <div class="intro">
-  <div><p class="kicker">인터랙티브 포스터</p><h1 lang="en">Last Train<span>.</span></h1></div>
-  <p class="instruction">포스터 위를 길게 찢어보세요.<br> 종이 너머로 막차가 지나갑니다.</p>
- </div>
- <section class="stage" id="trainStage" aria-label="막차 장면">
-  <canvas id="tearCanvas" width="1440" height="810" tabindex="0" role="button" aria-label="포스터 찢기. 원하는 방향으로 드래그하거나 엔터 키를 눌러 찢으세요." aria-describedby="accessHelp"></canvas>
-  <span class="stage-pill" id="stageHint">길게 드래그해서 찢기</span>
+<header class="mast"><div class="nav-left"><a href="../index.html" class="home"><img src="../mark.svg" alt="">Night Studies</a><span class="divider">/</span><span class="workspace-name">포스터 작업실</span></div><div class="nav-actions"><button type="button" class="plain library-btn" data-library>작업 보관함</button><button type="button" class="project-btn" data-save-project>프로젝트 저장</button></div></header>
+<main inert>
+ <div class="headline"><div><h1 lang="en">Last Train<span>.</span></h1><p>막차가 지나는 열두 초에서 골라 만드는 한 장의 영화 포스터.</p></div><span class="format-label" id="printDimensions">1800 × 1200 px</span></div>
+ <div class="workbench">
+ <div class="production">
+ <section class="screen">
+   <div class="panel-head"><h2>인쇄 미리보기</h2><span id="paperName">야간선</span></div>
+   <div id="trainStage" class="stage"><div id="paperMount"><canvas id="tearCanvas" width="1800" height="1200" tabindex="0" role="button" aria-label="인쇄 미리보기. 원하는 곳을 드래그해서 찢으세요. 엔터 키로 자동 찢기, 스페이스 키로 필름을 재생합니다."></canvas></div></div>
+   <div class="toolstrip"><span>드래그로 종이 찢기</span><div><button type="button" id="autoTear">자동 찢기</button><button type="button" id="cameraTear">손으로 찢기</button><button type="button" id="undoCut" disabled>찢기 취소</button><button type="button" id="redoCut" disabled>다시 적용</button></div></div>
+   <span id="handStatus" aria-live="polite"></span>
  </section>
- <div class="transport">
-  <div class="time-group"><span id="playhead">00:00</span><span class="time-end">/ 00:12</span></div>
-  <div class="time-rail" role="progressbar" aria-label="장면 진행" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0"><span id="progress"></span></div>
-  <button type="button" id="soundToggle" aria-pressed="false" aria-label="현장음 켜기">
-   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z"/><g id="soundWaves" hidden><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></g><path id="soundSlash" d="m16 9 6 6m0-6-6 6"/></svg>
-   <span id="soundLabel">소리 켜기</span>
-  </button>
+ <section class="timeline">
+   <div class="panel-head"><h2>필름 타임라인</h2><span class="clock"><output id="playhead">00:00.0</output> / 00:12.0</span></div>
+   <div id="filmstrip" class="filmstrip" aria-label="장면 선택"></div>
+   <label class="sr-only" for="seek">출력할 프레임 선택</label><input id="seek" type="range" min="0" max="12" step="0.05" value="0">
+   <div class="player"><div><button type="button" id="playToggle"><span aria-hidden="true" class="play-icon"></span><span id="playLabel">재생</span></button><button type="button" id="replay">처음부터</button></div><button type="button" id="soundToggle" aria-pressed="false">현장음 끔</button></div>
+ </section>
  </div>
- <div class="controls">
-  <div class="action-group">
-   <button class="primary" type="button" id="autoTear"><span class="rip-icon" aria-hidden="true"></span><span>한 번에 열기</span></button>
-   <button class="secondary" type="button" id="cameraTear">손으로 찢기</button>
-   <button class="secondary" type="button" id="replay" disabled>처음부터</button>
-  </div>
-  <button type="button" class="save" id="savePoster" disabled><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5"/></svg>포스터 저장</button>
+ <aside class="inspector" aria-label="포스터 편집">
+   <div class="panel-head"><h2>인쇄 설정</h2><a class="preview-jump" href="#tearCanvas">미리보기 ↑</a></div>
+   <fieldset><legend>인쇄판</legend><div class="stocks" id="stockOptions">
+     <button type="button" data-stock="vermilion" aria-pressed="true"><span class="stock red"></span>야간선</button>
+     <button type="button" data-stock="blueprint" aria-pressed="false"><span class="stock blue"></span>청사진</button>
+     <button type="button" data-stock="letterpress" aria-pressed="false"><span class="stock cream"></span>활판</button>
+   </div></fieldset>
+   <fieldset class="backdrop"><legend>필름 배경</legend><div class="photo-pick"><span id="backgroundName">자정의 승강장</span><button type="button" id="pickBackground">사진 가져오기</button><input type="file" id="backgroundFile" accept="image/jpeg,image/png,image/webp" hidden></div><details id="photoFraming" hidden><summary>사진 구도</summary><label for="photoPanX">좌우 위치</label><input type="range" id="photoPanX" min="0" max="100" value="50"><label for="photoPanY">상하 위치</label><input type="range" id="photoPanY" min="0" max="100" value="54"><label class="people-toggle"><input type="checkbox" id="photoActors" checked>승객과 열차 합성</label></details><button type="button" id="resetBackground" hidden>기본 승강장으로 복원</button><span id="photoStatus" role="status"></span></fieldset>
+   <fieldset class="type-fields"><legend>타이포그래피</legend><label for="filmTitle">영화 제목</label><input id="filmTitle" maxlength="40" value="LAST TRAIN" autocomplete="off"><label for="subtitle">부제</label><input id="subtitle" maxlength="52" value="종점행 · 마지막 열차" autocomplete="off"></fieldset>
+   <fieldset><legend>판형</legend><div class="formats" id="formatOptions">
+     <button type="button" data-format="print" aria-pressed="true">3:2</button><button type="button" data-format="cinema" aria-pressed="false">16:9</button><button type="button" data-format="portrait" aria-pressed="false">4:5</button>
+   </div></fieldset>
+   <fieldset class="width-control"><legend>종이 편집</legend><div class="label-row"><label for="cutWidth">찢어진 폭</label><output for="cutWidth" id="widthValue">100%</output></div><input id="cutWidth" type="range" min="35" max="175" step="1" value="100"></fieldset>
+   <div class="output"><button type="button" id="savePoster"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5"/></svg>포스터 PNG 내보내기</button><span role="status" id="sceneStatus">화면에 보이는 프레임이 포스터에 담깁니다.</span></div>
+ </aside>
  </div>
- <div class="notes"><span id="sceneStatus" role="status">찢은 자리와 손을 뗀 순간을 한 장으로 간직할 수 있어요.</span><span id="handStatus" aria-live="polite"></span></div>
- <p class="sr-only" id="accessHelp">엔터 키 또는 한 번에 열기 버튼으로 장면을 열 수 있습니다. 애니메이션 중 캔버스를 짧게 누르거나 스페이스 키를 누르면 현재 순간을 저장용으로 담습니다.</p>
 </main>
-<script src="../hand-control.js" defer></script>
+<script src="../hand-control.js?v=9151a2b34d" defer></script>
 </body>
 </html>

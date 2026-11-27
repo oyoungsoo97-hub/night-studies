@@ -4,16 +4,21 @@
   const canvas = el('tearCanvas'), ctx = canvas.getContext('2d', {alpha: false});
   const sheet = document.createElement('canvas'), printed = document.createElement('canvas');
   const station = document.createElement('canvas'), carriage = document.createElement('canvas');
-  const sceneStatus = el('sceneStatus'), progress = el('progress'), timeRail = progress.parentElement;
+  const sceneStatus = el('sceneStatus'), seek = el('seek');
+  const {stocks,formats} = window.TrainPrint;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const clip = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
   const smooth = t => t * t * (3 - 2 * t);
   const duration = 12;
-  let W = 0, H = 0, filmTime = 0, playing = false, previous = 0, animation = 0;
-  let openingArea = .01, opened = false, stroke = null, strokes = [], pointer = null, auto = null, saved = null, clockSecond = -1;
-  let photo = null, poster = null, trainPhoto = null, visible = true, frameDirty = true;
+  let W = 0, H = 0, filmTime = .85, playing = false, previous = 0, animation = 0;
+  let openingArea = .01, stroke = null, strokes = [], redo = [], pointer = null, auto = null, autoIndex=0;
+  let photo = null, poster = null, trainPhoto = null, gradedTrain = null, visible = true, frameDirty = true;
+  let design={stock:'vermilion',format:'print',title:'LAST TRAIN',subtitle:'종점행 · 마지막 열차',width:100};
   const origin = new URL('.', location.href);
-
+  const marks = [.85,2.65,5.80,8.15,11.25];
+  const labels = ['승강장','진입','교차','출발','종점'];
+  let assetsReady,stockPhoto=null,background=null,photoRevision=0;
+  let grainCache=null;
   function random(seed) {
     let n = seed >>> 0;
     return () => ((n = (Math.imul(1664525, n) + 1013904223) >>> 0) / 4294967296);
@@ -33,44 +38,23 @@
   function line(c,x1,y1,x2,y2,color,width) {
     c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.strokeStyle=color; c.lineWidth=width; c.stroke();
   }
-  function fallbackPrint(c) {
-    c.fillStyle='#cd4938'; c.fillRect(0,0,W,H);
-    const ink='#241f1b', cream='#ead8a9', scale=Math.min(W/1200,H/600);
-    c.save(); c.translate(W*.048,H*.11); c.scale(scale,scale);
-    c.fillStyle=ink; c.font='bold 17px Helvetica, sans-serif'; c.fillText('NIGHT SERVICE',0,0);
-    c.font='900 134px Helvetica,Arial,sans-serif'; c.fillText('LAST',-6,142); c.fillText('TRAIN',-5,254);
-    c.fillStyle=cream;c.font='bold 18px Helvetica, sans-serif'; c.fillText('마지막 열차',0,301); c.restore();
-    c.save(); c.translate(W*.72,H*.57); c.rotate(-.40);
-    for(let i=0;i<7;i++){c.strokeStyle=i%3===0?cream:ink; c.lineWidth=H*.023;c.beginPath();c.ellipse(0,i*H*.023,W*.267,H*.185,0,-Math.PI,Math.PI);c.stroke();}
-    c.restore(); line(c,W*.047,H*.87,W*.953,H*.87,ink,H*.004);
-  }
   function createPrint() {
-    const c=printed.getContext('2d'); c.clearRect(0,0,W,H);
-    if(poster){
-      // Stretch only the unprinted center strip, retaining a round terminus on wide screens.
-      const sw=poster.width,sh=poster.height,s=H/sh;
-      const left=Math.min(W*.43,sw*.45*s),right=Math.min(W*.36,sw*.37*s);
-      c.drawImage(poster,0,0,sw*.45,sh,0,0,left,H);
-      c.drawImage(poster,sw*.45,0,sw*.18,sh,left-.5,0,W-left-right+1,H);
-      c.drawImage(poster,sw*.63,0,sw*.37,sh,W-right,0,right,H);
-      c.fillStyle='#1c2530';c.textBaseline='alphabetic';c.textAlign='left';
-      const margin=W*.041;
-      c.font='bold '+Math.round(H*.155)+'px BarlowCondensed, Arial, sans-serif';
-      c.fillText('23:59',margin,H*.942);
-      c.textAlign='right';
-      c.font='bold '+Math.max(11,Math.round(H*.050))+'px BarlowCondensed, Arial, sans-serif';
-      c.fillText('NIGHT SERVICE',W-margin,H*.885);
-      c.font='600 '+Math.max(9,Math.round(H*.025))+'px "Apple SD Gothic Neo", sans-serif';
-      c.fillText('종점행  ·  마지막 열차',W-margin,H*.943);
-      c.textAlign='left';
-    }else{fallbackPrint(c);}
-    const shade=c.createLinearGradient(0,0,0,H);
-    shade.addColorStop(0,'#fff8d20b');shade.addColorStop(.53,'#0000');shade.addColorStop(1,'#39231f32');
-    c.fillStyle=shade;c.fillRect(0,0,W,H);grain(c,W,H,67,Math.round(W*H/48),.16);
+    window.TrainPrint.compose(printed.getContext('2d'),W,H,design,poster,(c,w,h,seed,count,light)=>{
+      if(grainCache?.width!==w||grainCache?.height!==h||grainCache.light!==light){
+        const layer=document.createElement('canvas');layer.width=w;layer.height=h;
+        grain(layer.getContext('2d'),w,h,seed,count,light);grainCache={width:w,height:h,light,layer};
+      }
+      c.drawImage(grainCache.layer,0,0);
+    });
+  }
+  function gradeCarriage() {
+    const src=trainPhoto || carriage;
+    gradedTrain=document.createElement('canvas');gradedTrain.width=src.width;gradedTrain.height=src.height;
+    const c=gradedTrain.getContext('2d');c.filter=stocks[design.stock].filter;c.drawImage(src,0,0);
   }
   function createStation() {
     const c=station.getContext('2d');c.clearRect(0,0,W,H);
-    if(photo) cover(c,photo,W,H,.5,.54);
+    if(photo){c.save();c.filter=stocks[design.stock].filter;cover(c,photo,W,H,(background?.panX??50)/100,(background?.panY??54)/100);c.restore();}
     else {
       const grd=c.createLinearGradient(0,0,0,H);grd.addColorStop(0,'#101b22');grd.addColorStop(.55,'#55716c');grd.addColorStop(1,'#172129');c.fillStyle=grd;c.fillRect(0,0,W,H);
       for(let i=0;i<16;i++){let x=i*W/14-W/18;c.fillStyle='#182c30';c.fillRect(x,H*.23,W*.011,H*.43);
@@ -117,14 +101,14 @@
 
   function ripPath(points) {
     const path = new Path2D();if(!points.length)return path;
-    if(points.length===1){const p=points[0];path.ellipse(p.x*W,p.y*H,p.r*H*1.4,p.r*H,-.25,0,Math.PI*2);return path;}
+    if(points.length===1){const p=points[0];path.ellipse(p.x*W,p.y*H,p.r*H*design.width*.014,p.r*H*design.width*.01,-.25,0,Math.PI*2);return path;}
     const upper=[],lower=[];
     for(let i=0;i<points.length;i++){
       const p=points[i],a=points[Math.max(0,i-1)],b=points[Math.min(points.length-1,i+1)];
       const dx=(b.x-a.x)*W,dy=(b.y-a.y)*H,length=Math.hypot(dx,dy)||1;
       const nx=-dy/length,ny=dx/length;
       const phase=i*.165+points[0].x*15;
-      const base=p.r*H;
+      const base=p.r*H*design.width/100;
       const fibres=Math.min(base*.28,H*.0033);
       const left=base*(1+.082*Math.sin(phase)+.04*Math.sin(phase*1.76))+fibres*Math.sin(i*29.24+2.81);
       const right=base*(1+.079*Math.sin(phase*.74+2.2)+.047*Math.cos(phase*1.8))+fibres*Math.sin(i*35.42+1.26);
@@ -146,8 +130,8 @@
     openingArea=clip(area*2.3,.015,1);
     // Render all exposed fibre rims first, then punch the holes together so crossings stay open.
     for(const shape of shapes){
-      c.fillStyle='#d9c9a3';c.fill(shape);c.lineWidth=Math.max(2,H*.009);c.strokeStyle='#b1a183';c.stroke(shape);
-      c.lineWidth=Math.max(1,H*.005);c.strokeStyle='#e6dfc9';c.stroke(shape);
+      c.fillStyle=stocks[design.stock].rim;c.fill(shape);c.lineWidth=Math.max(2,H*.009);c.strokeStyle=stocks[design.stock].shadow;c.stroke(shape);
+      c.lineWidth=Math.max(1,H*.005);c.strokeStyle=stocks[design.stock].rim;c.stroke(shape);
     }
     c.globalCompositeOperation='destination-out';c.fillStyle='#000';
     for(const shape of shapes)c.fill(shape);
@@ -158,9 +142,9 @@
     const frac=clip((t-1.6)/7.8);
     return frac*.85 + smooth(frac)*.15;
   }
-  function drawTrain(t) {
+  function drawTrain(t,ctx) {
     const phase=trainPhase(t);if(phase<=0||phase>=1)return;
-    const sprite=trainPhoto || carriage;
+    const sprite=gradedTrain || trainPhoto || carriage;
     const carHeight=H*.48,carWidth=carHeight*sprite.width/sprite.height, top=personFoot()-H*.32;
     const cars=carWidth/carHeight>4?3:4,trainWidth=cars*carWidth;
     const x=W-(W+trainWidth)*phase;
@@ -178,19 +162,21 @@
     ctx.fillStyle=head;ctx.fillRect(x-carHeight*.36,top+carHeight*.30,carHeight*.72,carHeight*.72);
   }
   function personFoot(){
-    if(!photo)return H*.665;
+    if(background||!photo)return H*.665;
     const scaledHeight=photo.height*Math.max(W/photo.width,H/photo.height);
     return scaledHeight*.693+(H-scaledHeight)*.54;
   }
-  function paint(t = filmTime) {
-    if(!W||!H)return;
-    ctx.drawImage(station,0,0);
-    person(ctx,W*.49,personFoot(),H*.178);if(t<6.2)person(ctx,W*.55,personFoot(),H*.17,true);
-    drawTrain(t);
-    ctx.drawImage(sheet,0,0);
-    frameDirty=false;
+  function paintScene(context,t) {
+    context.drawImage(station,0,0);
+    if(background&&!background.actors)return;
+    person(context,W*.49,personFoot(),H*.178);
+    if(t<6.2)person(context,W*.55,personFoot(),H*.17,true);
+    drawTrain(t,context);
   }
-
+  function paint(t=filmTime){
+    if(!W||!H)return;
+    paintScene(ctx,t);ctx.drawImage(sheet,0,0);frameDirty=false;
+  }
   const sound = (() => {
     let audio=null,out=null,bed=null,air=null,filter=null,tone=null,rolling=null,noise=null,enabled=false;
     function prepare(){
@@ -227,39 +213,61 @@
     return {toggle,update,rustle,quiet};
   })();
   function updateClock(){
-    const s=Math.floor(filmTime);if(s!==clockSecond){clockSecond=s;el('playhead').textContent='00:'+String(s).padStart(2,'0');timeRail.setAttribute('aria-valuenow',String(s));}
-    progress.style.transform='scaleX('+Math.min(1,filmTime/duration)+')';
+    el('playhead').textContent='00:'+filmTime.toFixed(1).padStart(4,'0');
+    seek.value=String(filmTime);
+    el('playToggle').classList.toggle('playing',playing);
+    el('playLabel').textContent=playing?'정지':'재생';
+    el('playToggle').setAttribute('aria-label',playing?'현재 프레임에서 정지':'필름 재생');
+    document.querySelectorAll('[data-frame]').forEach(b=>b.setAttribute('aria-pressed',String(Math.abs(filmTime-Number(b.dataset.frame))<=.03)));
   }
   function setSceneText(message){if(sceneStatus.textContent!==message)sceneStatus.textContent=message;}
-  function start(){
-    if(opened)return;
-    opened=true;playing=true;previous=0;el('stageHint').classList.add('gone');el('replay').disabled=false;el('autoTear').querySelector('span:last-child').textContent='크게 열기';
-    setSceneText('막차가 들어옵니다. 손을 떼면 그 순간이 포스터에 담겨요.');queue();
-  }
   function queue(){if(!animation && visible)animation=requestAnimationFrame(tick);}
-  let lastPaint=0, lastSound=0;
+  function pause(){
+    const wasPlaying=playing;playing=false;previous=0;sound.quiet();updateClock();if(wasPlaying)paint();
+  }
+  function play(){
+    if(filmTime>=duration)filmTime=0;
+    playing=true;previous=0;updateClock();queue();
+  }
+  function seekTo(t){
+    if(auto){auto=null;end();}
+    pause();filmTime=clip(Number(t),0,duration);updateClock();paint();
+  }
+  let lastPaint=0,lastSound=0;
   function tick(now){
     animation=0;
     if(playing){
-      if(previous)filmTime=Math.min(duration,filmTime+Math.min(150,now-previous)/1000);
-      previous=now;if(filmTime>=duration){playing=false;setSceneText('막차가 지나갔어요. 마지막 장면을 눌러 포스터에 담을 수 있어요.');}
+      if(previous)filmTime=Math.min(duration,filmTime+Math.max(0,now-previous)/1000);
+      previous=now;
+      if(filmTime>=duration){pause();setSceneText('막차가 지나간 뒤의 장면입니다.');}
     }
     if(auto)animateRip(now);
-    if(frameDirty||now-lastPaint>=(reducedMotion?82:28)||!playing){paint();lastPaint=now;}
-    updateClock();
+    if(frameDirty||now-lastPaint>=(reducedMotion?82:28)||!playing){paint();lastPaint=now;updateClock();}
     if(now-lastSound>70||!playing){sound.update(filmTime,playing);lastSound=now;}
     if(playing||auto)queue();
   }
+  function undoUI(){
+    el('undoCut').disabled=!strokes.length||!!stroke;
+    el('redoCut').disabled=!redo.length||!!stroke;
+  }
+  function undoCut(forward){
+    if(stroke||auto)return;
+    const from=forward?redo:strokes,to=forward?strokes:redo;
+    if(!from.length)return;
+    pause();to.push(from.pop());buildPaper();paint();undoUI();
+    setSceneText(forward?'찢은 자리를 다시 적용했어요.':'마지막 찢기를 취소했어요.');
+  }
   function begin(x,y,isAuto=false){
     if(stroke||(!isAuto&&auto))return;
-    start();const s={points:[],distance:0,auto:isAuto};strokes.push(s);stroke=s;
+    if(strokes.length>=180){setSceneText('찢은 자리가 180개예요. 일부를 취소한 뒤 편집해 주세요.');return;}
+    pause();redo=[];const s={points:[],distance:0,auto:isAuto};strokes.push(s);stroke=s;undoUI();
     stroke.points.push({x:clip(x),y:clip(y),r:.006});sound.rustle();buildPaper();paint();
   }
   function drag(x,y){
     if(!stroke)return;
     x=clip(x);y=clip(y);const points=stroke.points,last=points[points.length-1];
     const dist=Math.hypot((x-last.x)*W/H,y-last.y);
-    if(dist<.006)return;
+    if(dist<.006||points.length>3000)return;
     const pieces=Math.ceil(dist/.016);
     for(let i=1;i<=pieces;i++){
       const a=i/pieces;stroke.distance+=dist/pieces;
@@ -268,20 +276,15 @@
     }
     buildPaper();paint();
   }
-  function snapshot(){
-    if(!opened)return;
-    paint();const shot=document.createElement('canvas');shot.width=W;shot.height=H;shot.getContext('2d').drawImage(canvas,0,0);
-    saved={image:shot,time:filmTime};el('savePoster').disabled=false;
-  }
   function end(){
     if(!stroke)return;
     if(stroke.points.length>2){
-      const ps=stroke.points;for(let i=0;i<Math.min(5,ps.length-1);i++){const j=ps.length-1-i;ps[j].r*=.24+.145*i;}
+      const ps=stroke.points;
+      for(let i=0;i<Math.min(5,ps.length-1);i++){const j=ps.length-1-i;ps[j].r*=.24+.145*i;}
     }
-    stroke=null;buildPaper();snapshot();
-    setSceneText('손을 뗀 장면을 담았어요. 포스터 저장으로 내려받을 수 있어요.');
+    stroke=null;buildPaper();paint();undoUI();
+    setSceneText('찢은 자리를 반영했어요. 타임라인에서 인쇄할 장면을 골라보세요.');
   }
-  let autoIndex=0;
   function autoRip(){
     if(auto||stroke)return;
     const n=autoIndex++;
@@ -295,22 +298,19 @@
     const t=clip((now-auto.start)/(reducedMotion?260:1150));const p=autoPoint(smooth(t),auto.n);drag(p.x,p.y);
     if(t>=1){auto=null;end();}
   }
-  function reset(){
-    strokes=[];stroke=null;pointer=null;auto=null;saved=null;autoIndex=0;opened=false;playing=false;filmTime=0;previous=0;clockSecond=-1;
-    sound.quiet();el('savePoster').disabled=true;el('replay').disabled=true;el('stageHint').classList.remove('gone');el('autoTear').querySelector('span:last-child').textContent='한 번에 열기';
-    setSceneText('찢은 자리와 손을 뗀 순간을 한 장으로 간직할 수 있어요.');buildPaper();paint();updateClock();
-  }
   function download(){
-    if(!saved)return;
-    const moment=saved.time,image=saved.image,frame=document.createElement('canvas'),long=1800,scale=long/image.width,margin=46;
-    frame.width=long+2*margin;frame.height=Math.round(image.height*scale)+2*margin+75;
-    const g=frame.getContext('2d');g.fillStyle='#eee7d6';g.fillRect(0,0,frame.width,frame.height);g.drawImage(image,margin,margin,long,image.height*scale);
-    g.fillStyle='#1f2422';g.font='bold 36px Helvetica, Arial, sans-serif';g.fillText('LAST TRAIN',margin,frame.height-33);
-    g.font='23px monospace';g.textAlign='right';g.fillText('NIGHT STUDIES   /   '+moment.toFixed(2)+' s',frame.width-margin,frame.height-34);
-    try {frame.toBlob(blob=>{if(!blob){setSceneText('포스터 파일을 만들 수 없어요. 다시 시도해 주세요.');return;}
-      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='last-train-'+String(Math.round(moment*100)).padStart(4,'0')+'.png';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
-      setSceneText('찢은 포스터를 PNG로 저장했어요.');},'image/png');}
-    catch{setSceneText('로컬 웹 서버에서 열면 포스터를 저장할 수 있어요.');}
+    if(auto){auto=null;end();}
+    pause();paint();
+    const clean=(design.title.trim()||'LAST TRAIN').replace(/[\\/:*?"<>|]/g,'-').slice(0,55);
+    const name=clean+'-'+filmTime.toFixed(2)+'s.png';
+    try{
+      canvas.toBlob(blob=>{
+        if(!blob){setSceneText('이미지를 만들 수 없어요. 다시 시도해 주세요.');return;}
+        const url=URL.createObjectURL(blob),a=document.createElement('a');
+        a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+        setSceneText(name+' 파일을 내보냈어요.');
+      },'image/png');
+    }catch{setSceneText('웹 서버를 통해 열면 포스터를 내보낼 수 있어요.');}
   }
   function coords(e){const b=canvas.getBoundingClientRect();return{x:(e.clientX-b.left)/b.width,y:(e.clientY-b.top)/b.height};}
   canvas.addEventListener('pointerdown',e=>{
@@ -320,31 +320,216 @@
   canvas.addEventListener('pointermove',e=>{if(e.pointerId!==pointer)return;const p=coords(e);drag(p.x,p.y);});
   function release(e){if(e.pointerId!==pointer)return;pointer=null;end();}
   canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);canvas.addEventListener('lostpointercapture',release);
-  canvas.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();if(e.repeat)return;if(opened&&e.key===' '){snapshot();setSceneText('현재 장면을 포스터에 담았어요.');}else autoRip();}});
-  el('autoTear').addEventListener('click',autoRip);el('replay').addEventListener('click',reset);el('savePoster').addEventListener('click',download);
-  el('soundToggle').addEventListener('click',()=>{const active=sound.toggle();el('soundToggle').setAttribute('aria-pressed',String(active));el('soundLabel').textContent=active?'소리 끄기':'소리 켜기';el('soundToggle').setAttribute('aria-label',active?'현장음 끄기':'현장음 켜기');el('soundWaves').toggleAttribute('hidden',!active);el('soundSlash').toggleAttribute('hidden',active);sound.update(filmTime,playing);});
+
+  function layoutCanvas(){
+    if(!W||!H)return;
+    const board=el('trainStage').getBoundingClientRect();
+    const inset=board.width<480?12:24;
+    const scale=Math.min((board.width-2*inset)/W,(board.height-2*inset)/H);
+    const mount=el('paperMount');
+    mount.style.width=Math.max(1,Math.round(W*scale))+'px';
+    mount.style.height=Math.max(1,Math.round(H*scale))+'px';
+    canvas.style.width='100%';
+  }
+  function makeFilmstrip(){
+    const strip=el('filmstrip');
+    marks.forEach((time,index)=>{
+      const button=document.createElement('button'),thumb=document.createElement('canvas'),tag=document.createElement('span');
+      button.type='button';button.dataset.frame=time;button.setAttribute('aria-label',labels[index]+' 장면, '+time.toFixed(2)+'초');
+      thumb.width=240;thumb.height=96;thumb.setAttribute('aria-hidden','true');
+      tag.textContent=time.toFixed(1)+'s';button.title=labels[index];
+      button.append(thumb,tag);strip.append(button);
+      button.addEventListener('click',()=>{seekTo(time);setSceneText(labels[index]+' 장면을 골랐어요.');});
+    });
+  }
+  function renderFilmstrip(){
+    el('filmstrip').querySelectorAll('button').forEach((button,index)=>{
+      const thumb=button.firstChild,c=thumb.getContext('2d');
+      const z=Math.max(thumb.width/W,thumb.height/H);
+      c.save();c.translate((thumb.width-W*z)/2,(thumb.height-H*z)*.51);c.scale(z,z);
+      paintScene(c,marks[index]);c.restore();
+    });
+  }
+  function syncControls(){
+    el('filmTitle').value=design.title;el('subtitle').value=design.subtitle;
+    el('cutWidth').value=design.width;el('widthValue').textContent=design.width+'%';
+    el('paperName').textContent=stocks[design.stock].name;
+    el('backgroundName').textContent=background?.name||'자정의 승강장';el('resetBackground').hidden=!background;
+    el('photoFraming').hidden=!background;
+    if(background){
+      const scale=Math.max(W/photo.width,H/photo.height);
+      for(const [id,key,overflow] of [['photoPanX','panX',photo.width*scale-W],['photoPanY','panY',photo.height*scale-H]]){
+        el(id).value=background[key];el(id).disabled=overflow<1;
+      }
+      el('photoActors').checked=background.actors;
+    }
+    el('printDimensions').textContent=W+' × '+H+' px';
+    for(const key of ['stock','format']){
+      document.querySelectorAll('[data-'+key+']').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset[key]===design[key])));
+    }
+    undoUI();updateClock();
+  }
+  function rebuildDesign(){
+    const [width,height]=formats[design.format];
+    if(width!==W||height!==H){
+      W=width;H=height;
+      for(const surface of [canvas,sheet,printed,station]){surface.width=W;surface.height=H;}
+      layoutCanvas();
+    }
+    createPrint();createStation();gradeCarriage();buildPaper();paint();renderFilmstrip();syncControls();
+  }
+  function changeOption(key,value){
+    if(design[key]===value)return;
+    seekTo(filmTime);design[key]=value;rebuildDesign();
+  }
+  for(const key of ['stock','format']){
+    document.querySelectorAll('[data-'+key+']').forEach(button=>button.addEventListener('click',()=>changeOption(key,button.dataset[key])));
+  }
+  for(const [id,key] of [['filmTitle','title'],['subtitle','subtitle']]){
+    el(id).addEventListener('input',e=>{
+      pause();design[key]=e.currentTarget.value;createPrint();buildPaper();paint();
+    });
+  }
+  el('cutWidth').addEventListener('input',e=>{
+    pause();design.width=Number(e.currentTarget.value);el('widthValue').textContent=design.width+'%';buildPaper();paint();
+  });
+  seek.addEventListener('input',()=>seekTo(seek.value));
+  el('playToggle').addEventListener('click',()=>playing?pause():play());
+  el('replay').addEventListener('click',()=>{seekTo(0);play();});
+  el('soundToggle').addEventListener('click',e=>{
+    const enabled=sound.toggle();e.currentTarget.setAttribute('aria-pressed',String(enabled));
+    e.currentTarget.textContent='현장음 '+(enabled?'켬':'끔');sound.update(filmTime,playing);
+  });
+  el('savePoster').addEventListener('click',download);
+  el('autoTear').addEventListener('click',autoRip);
+  el('undoCut').addEventListener('click',()=>undoCut(false));
+  el('redoCut').addEventListener('click',()=>undoCut(true));
+  canvas.addEventListener('keydown',e=>{
+    if(el('ns-library')?.open)return;
+    if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+      e.preventDefault();seekTo(filmTime+(e.key==='ArrowLeft'?-1:1)*(e.shiftKey?1:.05));
+    }else if(e.key==='Enter'){
+      e.preventDefault();if(!e.repeat)autoRip();
+    }else if(e.code==='Space'){
+      e.preventDefault();if(!e.repeat){if(playing)pause();else play();}
+    }else if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){
+      e.preventDefault();undoCut(e.shiftKey);
+    }
+  });
+  const canUseHands=()=>W>0&&!el('ns-library')?.open&&pointer===null&&!auto;
+  let handDrawing=false;
   window.trainHands={
-    begin(x,y){if(pointer===null&&!auto)begin(x,y);},
-    move(x,y){if(pointer===null&&!auto)drag(x,y);},
-    end(){if(pointer===null&&!auto)end();}
+    begin(x,y){if(canUseHands()&&!stroke&&Number.isFinite(x)&&Number.isFinite(y)){begin(x,y);handDrawing=!!stroke;}},
+    move(x,y){if(handDrawing&&canUseHands()&&Number.isFinite(x)&&Number.isFinite(y))drag(x,y);},
+    end(){if(handDrawing){handDrawing=false;end();}}
   };
-  document.addEventListener('visibilitychange',()=>{visible=!document.hidden;previous=0;if(!visible){sound.quiet();if(animation)cancelAnimationFrame(animation);animation=0;}else if(playing||auto)queue();});
-  function resize(){
-    const b=canvas.getBoundingClientRect();
-    // Retain print detail when a portrait phone captures a poster.
-    const pixel=Math.min(1620/b.width,Math.max(Math.min(2,window.devicePixelRatio||1),1100/b.width));
-    const w=Math.max(1,Math.round(b.width*pixel)),h=Math.max(1,Math.round(b.height*pixel));
-    if(W===w&&H===h)return;
-    W=w;H=h;for(const surface of [canvas,sheet,printed,station]){surface.width=W;surface.height=H;}
-    createPrint();createStation();buildPaper();paint();
+  document.addEventListener('visibilitychange',()=>{
+    visible=!document.hidden;previous=0;
+    if(!visible){sound.quiet();if(auto){auto=null;end();}}
+    else if(playing)queue();
+  });
+  function editionCut(house=false){
+    return Array.from({length:97},(_,i)=>{
+      const t=i/96,curve=Math.sin(Math.PI*t),detail=.01*Math.sin(t*12);
+      const x=house?.050+.905*t:.073+.859*t;
+      const y=house?.671-.342*t+.044*Math.sin(t*6.7)+detail:.606-.12*t+.026*Math.sin(t*8.5)+detail;
+      const r=.001+(house?.189:.151)*Math.pow(curve,.68);
+      return [x,y,r];
+    });
   }
-  function imageAsset(name,accept){
-    const image=new Image();
-    image.onload=()=>{accept(image);createPrint();createStation();buildPaper();paint();};
-    image.src=new URL('../assets/'+name,origin).href;
+  function selectBackground(record,image){
+    background=record;photo=image||stockPhoto;createStation();paint();renderFilmstrip();syncControls();
   }
-  createCarriage();resize();new ResizeObserver(resize).observe(canvas);updateClock();
-  document.fonts.ready.then(()=>{createPrint();buildPaper();paint();});
-  imageAsset('carriage.webp',v=>{trainPhoto=v;});
-  imageAsset('poster.jpg',v=>{poster=v;});imageAsset('platform.jpg',v=>{photo=v;});
+  function decodePhoto(url){
+    return new Promise((resolve,reject)=>{
+      const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error('사진을 열 수 없어요. JPG, PNG, WebP 이미지를 골라 주세요.'));img.src=url;
+    });
+  }
+  async function importBackground(file){
+    if(!file)return;
+    const revision=++photoRevision,status=el('photoStatus');status.textContent='사진을 준비하고 있어요.';
+    let url;
+    try{
+      if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>32*1024*1024)throw Error('32 MB 이하의 JPG, PNG, WebP 이미지를 골라 주세요.');
+      url=URL.createObjectURL(file);const img=await decodePhoto(url),scale=Math.min(1,1600/Math.max(img.width,img.height));
+      const scaled=document.createElement('canvas');scaled.width=Math.max(1,Math.round(img.width*scale));scaled.height=Math.max(1,Math.round(img.height*scale));
+      const c=scaled.getContext('2d');c.fillStyle='#202727';c.fillRect(0,0,scaled.width,scaled.height);c.drawImage(img,0,0,scaled.width,scaled.height);
+      const data=scaled.toDataURL('image/jpeg',.84),result=await decodePhoto(data);
+      if(revision!==photoRevision)return;
+      const name=file.name.replace(/\.[^.]+$/,'').trim().slice(0,80)||'내 사진';
+      seekTo(filmTime);selectBackground({name,data,panX:50,panY:54,actors:true},result);status.textContent='';setSceneText('내 사진을 필름 배경으로 적용했어요.');
+    }catch(error){if(revision===photoRevision)status.textContent=error.message;}
+    finally{if(url)URL.revokeObjectURL(url);}
+  }
+  for(const [id,key] of [['photoPanX','panX'],['photoPanY','panY'],['photoActors','actors']]){
+    el(id).addEventListener('input',e=>{
+      if(!background)return;
+      pause();background[key]=key==='actors'?e.target.checked:Number(e.target.value);
+      createStation();paint();renderFilmstrip();
+    });
+  }
+  el('pickBackground').addEventListener('click',()=>el('backgroundFile').click());
+  el('backgroundFile').addEventListener('change',e=>{const file=e.target.files[0];e.target.value='';importBackground(file);});
+  el('resetBackground').addEventListener('click',()=>{photoRevision++;el('photoStatus').textContent='';seekTo(filmTime);selectBackground(null,null);setSceneText('자정의 승강장으로 돌아왔어요.');});
+  function state(){
+    seekTo(filmTime);
+    return {version:1,design:{...design},background:background?{...background}:null,time:filmTime,cuts:strokes.map(s=>s.points.map(p=>[p.x,p.y,p.r])),autoIndex};
+  }
+  function example(){
+    return {version:1,design:{stock:'blueprint',format:'print',width:116,title:'마지막 안내방송',subtitle:'23시 59분, 건너편 승강장에서'},time:5.8,cuts:[editionCut(true)],autoIndex:1};
+  }
+  function readProject(data){
+    const fail=()=>{throw Error('이 포스터 프로젝트의 편집 데이터를 읽을 수 없습니다.');};
+    const bounded=(value,min,max)=>Number.isFinite(value)&&value>=min&&value<=max;
+    const d=data?.design;
+    if(data?.version!==1||!d||typeof d.stock!=='string'||typeof d.format!=='string'||!Object.hasOwn(stocks,d.stock)||!Object.hasOwn(formats,d.format)||
+      typeof d.title!=='string'||d.title.length>40||typeof d.subtitle!=='string'||d.subtitle.length>52||
+      !Number.isInteger(d.width)||!bounded(d.width,35,175)||!bounded(data.time,0,12)||
+      !Number.isSafeInteger(data.autoIndex)||!bounded(data.autoIndex,0,1e8)||!Array.isArray(data.cuts)||data.cuts.length>180)fail();
+    const b=data.background;
+    if(b!=null&&(typeof b.name!=='string'||b.name.length>80||typeof b.data!=='string'||b.data.length>4000000||!/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]*={0,2}$/.test(b.data)))fail();
+    if(b&&((b.panX!==undefined&&!bounded(b.panX,0,100))||(b.panY!==undefined&&!bounded(b.panY,0,100))||(b.actors!==undefined&&typeof b.actors!=='boolean')))fail();
+    const cuts=data.cuts.map(points=>{
+      if(!Array.isArray(points)||!points.length||points.length>3200)fail();
+      return {auto:false,distance:0,points:points.map(p=>{
+        if(!Array.isArray(p)||p.length!==3||!bounded(p[0],0,1)||!bounded(p[1],0,1)||!bounded(p[2],0,.35))fail();
+        return {x:p[0],y:p[1],r:p[2]};
+      })};
+    });
+    return {background:b?{name:b.name,data:b.data,panX:b.panX??50,panY:b.panY??54,actors:b.actors??true}:null,design:{stock:d.stock,format:d.format,title:d.title,subtitle:d.subtitle,width:d.width},time:data.time,autoIndex:data.autoIndex,strokes:cuts};
+  }
+  async function restore(data){
+    const next=readProject(data);await assetsReady;
+    const image=next.background?await decodePhoto(next.background.data):null;
+    if(image&&Math.max(image.width,image.height)>1600)throw Error('이 프로젝트의 배경 사진이 너무 큽니다.');
+    photoRevision++;background=next.background;photo=image||stockPhoto;el('photoStatus').textContent='';
+    auto=null;stroke=null;handDrawing=false;
+    if(pointer!==null&&canvas.hasPointerCapture(pointer))canvas.releasePointerCapture(pointer);
+    pointer=null;pause();redo=[];
+    design=next.design;filmTime=next.time;autoIndex=next.autoIndex;strokes=next.strokes;
+    rebuildDesign();setSceneText('저장된 프레임과 인쇄 설정을 불러왔어요.');
+  }
+  function getPreview(){
+    const preview=document.createElement('canvas'),scale=Math.min(370/W,320/H);
+    preview.width=Math.max(1,Math.round(W*scale));preview.height=Math.max(1,Math.round(H*scale));
+    try{preview.getContext('2d').drawImage(canvas,0,0,preview.width,preview.height);return preview.toDataURL('image/jpeg',.77);}catch{return '';}
+  }
+  function imageAsset(file){
+    return new Promise(resolve=>{
+      const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>resolve(null);img.src=new URL('../assets/'+file,origin);
+    });
+  }
+  makeFilmstrip();createCarriage();
+  const fonts=Promise.allSettled([document.fonts.load('650 72px BarlowCondensed'),document.fonts.load('400 72px InstrumentSerif')]);
+  assetsReady=Promise.all([imageAsset('platform.jpg'),imageAsset('poster.jpg'),imageAsset('carriage.webp'),fonts]).then(([stationPhoto,printPhoto,carPhoto])=>{
+    stockPhoto=stationPhoto;photo=stockPhoto;poster=printPhoto;trainPhoto=carPhoto;
+    const initial=readProject({version:1,design,time:filmTime,cuts:[editionCut()],autoIndex:0});
+    strokes=initial.strokes;rebuildDesign();document.querySelector('main').inert=false;
+    document.documentElement.dataset.trainReady='true';
+  });
+  document.addEventListener('click',e=>{
+    if(W&&e.target.closest('[data-library],[data-save-project]'))seekTo(filmTime);
+  },true);
+  const observer=new ResizeObserver(layoutCanvas);observer.observe(el('trainStage'));
+  assetsReady.then(()=>window.NightLibrary?.register({getState:state,restore,getTitle:()=>design.title.trim()||'LAST TRAIN',getPreview,getExample:example}));
 })();

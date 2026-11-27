@@ -2,37 +2,45 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#191a18">
-<meta name="description" content="포스터를 찢고, 소리를 연주하고, 사진을 편집하는 세 편의 인터랙티브 단편.">
-<title>Night Studies — 세 편의 인터랙티브 단편</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f2e9">
+<meta name="description" content="영화 포스터, 폴리 사운드트랙, 세 컷의 사진을 만드는 브라우저 편집실. 프로젝트를 보관하고 PNG와 WAV로 내보내세요.">
+<title>Night Studies — After Hours 편집실</title>
 <link rel="icon" href="./mark.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./gallery.css">
+<link rel="stylesheet" href="./gallery.css?v=92c7a731b6">
+<script defer src="./library.js?v=04d6f1647b"></script>
+<script defer src="./gallery.js?v=91ca914a79"></script>
 </head>
 <body>
-<a class="skip" href="#works">작품 목록으로 이동</a>
-<div class="gallery">
-<header><a class="wordmark" href="index.html" aria-label="Night Studies 홈"><span class="monogram" aria-hidden="true"><i></i><i></i><i></i></span> NIGHT STUDIES</a><a class="author" href="https://github.com/oyoungsoo97-hub" rel="author">Youngsoo Oh</a></header>
-<main>
-<div class="program-head">
-<h1>After <em>Hours.</em></h1>
-<div class="introduction"><p class="program-type">인터랙티브 단편선</p><p>포스터를 찢고, 같은 장면에 다른 소리를 입히고,<br class="wide"> 한 장의 사진에서 세 컷의 이야기를 꺼냅니다.</p></div>
-</div>
-<div class="works" id="works">
-<a class="work train" href="./last-train/index.html">
- <div class="cover train-cover" aria-hidden="true"><div class="station"></div><div class="torn-paper"></div><div class="rail-sign"><i></i><i></i></div><div class="poster-name">LAST<br>TRAIN<span>.</span></div></div>
- <div class="caption"><div><h2>막차</h2><p>종이 틈으로 지나가는 12초</p></div><span class="action">포스터 찢기</span></div>
-</a>
-<a class="work foley" href="./foley-club/index.html">
- <div class="cover foley-cover" aria-hidden="true"><div class="hall"></div><div class="foley-name">FOLEY<br><i>CLUB</i></div><div class="wave"><span></span></div></div>
- <div class="caption"><div><h2>폴리 클럽</h2><p>한 편의 무성 장면, 두 개의 사운드트랙</p></div><span class="action">소리 입히기</span></div>
-</a>
-<a class="work light" href="./light-table/index.html">
- <div class="cover light-cover" aria-hidden="true"><div class="diner"></div><div class="film-edge"></div><div class="light-name">Light<br><i>Table</i></div><div class="crop"></div></div>
- <div class="caption"><div><h2>라이트 테이블</h2><p>한 프레임 안에서 찾아낸 세 컷</p></div><span class="action">사진 들여다보기</span></div>
-</a>
-</div>
+<a class="skip" href="#studios">편집실로 이동</a>
+<header class="mast"><div class="shell">
+  <a class="brand" href="./"><img src="./mark.svg" width="36" height="36" alt="">Night Studies</a>
+  <nav aria-label="주 메뉴"><a href="#studios">편집실</a><button type="button" data-library><span class="shelf-icon" aria-hidden="true"></span>작업 보관함</button></nav>
+</div></header>
+<main class="shell">
+  <div class="headline"><h1>After <em>Hours.</em></h1><p>한밤의 장면으로 만드는<br><strong>포스터, 사운드트랙, 사진집.</strong></p></div>
+  <section class="desk" id="studios" aria-label="편집실과 하우스 에디션">
+    <div class="selector">
+      <h2>편집실 선택</h2>
+      <div role="tablist" aria-label="편집실 선택" class="tabs">
+        <button type="button" aria-selected="true" tabindex="0" role="tab" aria-controls="edition" id="tab-train" data-studio="last-train"><i class="swatch sw-train"></i><span><b lang="en">Last Train</b><small>영화 포스터 편집실</small></span><span class="tab-dot" aria-hidden="true"></span></button>
+        <button type="button" aria-selected="false" tabindex="-1" role="tab" aria-controls="edition" id="tab-foley" data-studio="foley-club"><i class="swatch sw-foley"></i><span><b lang="en">Foley Club</b><small>효과음 편집실</small></span><span class="tab-dot" aria-hidden="true"></span></button>
+        <button type="button" aria-selected="false" tabindex="-1" role="tab" aria-controls="edition" id="tab-light" data-studio="light-table"><i class="swatch sw-light"></i><span><b lang="en">Light Table</b><small>사진 시퀀스 편집실</small></span><span class="tab-dot" aria-hidden="true"></span></button>
+      </div>
+      <a class="blank-link" id="start-blank" href="last-train/">막차 편집실 바로 열기</a>
+    </div>
+    <article id="edition" class="edition" role="tabpanel" aria-labelledby="tab-train" data-current="last-train">
+      <div class="mount" id="edition-art"><img id="edition-preview" src="assets/edition-train.webp" alt="마지막 안내방송 포스터 편집본" fetchpriority="high"></div>
+      <div class="edition-caption"><div><span class="edition-label" lang="en">House edition</span><h2 id="edition-name">마지막 안내방송</h2><p id="edition-copy">종이 사이로 드러난 승강장. 열차가 지나갈 한 프레임을 골라 포스터로 인쇄하세요.</p></div>
+      <a class="start" id="start-edition" href="last-train/?edition=house">포스터 편집하기</a></div>
+    </article>
+  </section>
+  <section class="shelf" aria-labelledby="recent-heading">
+    <div class="shelf-head"><h2 id="recent-heading">최근 작업</h2><button type="button" data-library>보관함 열기</button></div>
+    <div id="recent" aria-live="polite"></div>
+  </section>
+  <noscript><div class="noscript">편집하려면 JavaScript를 켜 주세요. <a href="last-train/">막차</a> · <a href="foley-club/">폴리 클럽</a> · <a href="light-table/">라이트 테이블</a></div></noscript>
 </main>
-</div>
+<footer class="shell"><span>Night Studies <i>by Youngsoo Oh</i></span><a href="https://github.com/oyoungsoo97-hub/night-studies">GitHub 소스</a></footer>
 </body>
 </html>

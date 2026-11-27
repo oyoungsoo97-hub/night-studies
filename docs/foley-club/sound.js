@@ -6,7 +6,7 @@ window.FoleySound = (() => {
   const seeds = [12752, 51819, 73801];
   let context, master, muted = false;
   const samples = new Map();
-  const buffers = new Map();
+  const buffers = new WeakMap();
   const active = new Set();
   function rng(seed) {
     return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
@@ -70,38 +70,66 @@ window.FoleySound = (() => {
     samples.set(key,out);
     return out;
   }
+  function createMix(ctx,volume=.82) {
+    const bus=ctx.createGain();
+    const limiter=ctx.createDynamicsCompressor();
+    limiter.threshold.value=-12;limiter.ratio.value=4;limiter.attack.value=.003;limiter.release.value=.17;
+    bus.gain.value=volume;
+    bus.connect(limiter);limiter.connect(ctx.destination);
+    return bus;
+  }
   function unlock() {
     if (!context) {
       const Audio = window.AudioContext || window.webkitAudioContext;
       if (!Audio) return false;
-      try {
-        context = new Audio();
-        master=context.createGain();
-        const limiter=context.createDynamicsCompressor();
-        limiter.threshold.value=-12; limiter.ratio.value=4; limiter.attack.value=.003; limiter.release.value=.17;
-        master.gain.value=muted?0:.82;
-        master.connect(limiter);limiter.connect(context.destination);
-      } catch {return false;}
+      try {context=new Audio();master=createMix(context,muted?0:.82);}
+      catch{return false;}
     }
-    if (context.state==='suspended') context.resume().catch(()=>{});
+    if(context.state==='suspended')context.resume().catch(()=>{});
     return true;
   }
-  function buffer(id, variant) {
-    const key=id+'-'+variant;
-    if(!buffers.has(key)) {
-      const data=synth(id,variant);
-      const b=context.createBuffer(1,data.length,rate);
-      b.getChannelData(0).set(data);
-      buffers.set(key,b);
+  function buffer(ctx,id,variant) {
+    if(!buffers.has(ctx))buffers.set(ctx,new Map());
+    const cache=buffers.get(ctx),key=id+'-'+variant;
+    if(!cache.has(key)){
+      const data=synth(id,variant),b=ctx.createBuffer(1,data.length,rate);
+      b.getChannelData(0).set(data);cache.set(key,b);
     }
-    return buffers.get(key);
+    return cache.get(key);
   }
-  function hit(id,variant,delay=0) {
-    if(!context || context.state==='closed') return;
-    const source=context.createBufferSource();
-    source.buffer=buffer(id,variant);source.connect(master);
-    source.onended=()=>{source.disconnect();active.delete(source);};
-    active.add(source);source.start(context.currentTime+Math.max(0,delay));
+  function schedule(ctx,bus,cue,when,offset=0,collect=false) {
+    const source=ctx.createBufferSource();
+    const fader=ctx.createGain(),panner=ctx.createStereoPanner();
+    source.buffer=buffer(ctx,cue.s,cue.v);
+    if(offset>=source.buffer.duration)return;
+    fader.gain.value=10**((cue.db??0)/20);panner.pan.value=(cue.pan??0)/100;
+    source.connect(fader);fader.connect(panner);panner.connect(bus);
+    if(collect)active.add(source);
+    source.onended=()=>{source.disconnect();fader.disconnect();panner.disconnect();active.delete(source);};
+    source.start(when,offset);
+  }
+  function hit(id,variant,delay=0,db=0,pan=0,offset=0) {
+    if(!context||context.state==='closed')return;
+    schedule(context,master,{s:id,v:variant,db,pan},context.currentTime+Math.max(0,delay),offset,true);
+  }
+  async function exportWav(events,seconds=8) {
+    const Offline=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+    if(!Offline)throw new Error('이 브라우저는 WAV 렌더링을 지원하지 않습니다.');
+    const sampleRate=48000,frameCount=Math.round(seconds*sampleRate);
+    const ctx=new Offline(2,frameCount,sampleRate),bus=createMix(ctx);
+    events.forEach(e=>schedule(ctx,bus,e,e.t));
+    const rendered=await ctx.startRendering();
+    const dataBytes=frameCount*4,out=new ArrayBuffer(44+dataBytes);
+    const view=new DataView(out),u8=new Uint8Array(out);
+    const tag=(at,str)=>{for(let i=0;i<str.length;i++)u8[at+i]=str.charCodeAt(i);};
+    tag(0,'RIFF');view.setUint32(4,36+dataBytes,true);tag(8,'WAVE');tag(12,'fmt ');
+    view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,2,true);
+    view.setUint32(24,sampleRate,true);view.setUint32(28,sampleRate*4,true);
+    view.setUint16(32,4,true);view.setUint16(34,16,true);tag(36,'data');view.setUint32(40,dataBytes,true);
+    const l=rendered.getChannelData(0),r=rendered.getChannelData(1);
+    const pcm=v=>Math.round(Math.max(-1,Math.min(1,v))*(v<0?32768:32767));
+    for(let i=0;i<frameCount;i++){view.setInt16(44+i*4,pcm(l[i]),true);view.setInt16(46+i*4,pcm(r[i]),true);}
+    return new Blob([out],{type:'audio/wav'});
   }
   function stop() {
     for(const source of active){try{source.stop();}catch{}}
@@ -110,15 +138,23 @@ window.FoleySound = (() => {
     muted=value;
     if(master){master.gain.cancelScheduledValues(context.currentTime);master.gain.setTargetAtTime(muted?0:.82,context.currentTime,.008);}
   }
-  function waveform(canvas,id) {
-    const ctx=canvas.getContext('2d'), w=canvas.width,h=canvas.height,data=synth(id),count=35;
-    ctx.clearRect(0,0,w,h);ctx.fillStyle=['#e2b876','#a6c4af','#dfc28d'][id];
-    for(let j=0;j<count;j++) {
-      const start=Math.floor(j*data.length/count),end=Math.floor((j+1)*data.length/count);
-      let energy=0;for(let i=start;i<end;i+=3)energy+=data[i]**2;
-      const amp=Math.max(1.3,Math.min(h-2,Math.sqrt(energy/((end-start)/3))*h*3));
-      ctx.fillRect(j*w/count,h/2-amp/2,Math.max(1,w/count-1.4),amp);
+  const peaks=new Map();
+  function waveform(canvas,id,variant=0) {
+    const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,count=35,key=id+'-'+variant;
+    if(!peaks.has(key)){
+      const data=synth(id,variant),columns=[];
+      for(let j=0;j<count;j++){
+        const start=Math.floor(j*data.length/count),end=Math.floor((j+1)*data.length/count);
+        let energy=0;for(let i=start;i<end;i+=3)energy+=data[i]**2;
+        columns.push(Math.sqrt(energy/((end-start)/3))*3);
+      }
+      peaks.set(key,columns);
     }
+    ctx.clearRect(0,0,w,h);ctx.fillStyle=['#e2b876','#a6c4af','#dfc28d'][id];
+    peaks.get(key).forEach((level,j)=>{
+      const amp=Math.max(1.3,Math.min(h-2,level*h));
+      ctx.fillRect(j*w/count,h/2-amp/2,Math.max(1,w/count-1.4),amp);
+    });
   }
-  return {unlock, hit, stop, setMute, waveform};
+  return {unlock, hit, stop, setMute, waveform, exportWav, durations:durations.slice()};
 })();
