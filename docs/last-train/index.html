@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#161716">
+  <meta name="description" content="한 장의 포스터를 찢어 막차가 지나가는 열두 초를 열어보세요.">
+  <title>Last Train · Night Studies</title>
+  <link rel="icon" href="../mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="train.css">
+  <script src="train.js" defer></script>
+</head>
+<body>
+<header class="mast">
+  <a href="../index.html" class="home" aria-label="Night Studies 작품 목록"><img class="brand-mark" src="../mark.svg" alt="">Night Studies</a>
+  <span class="medium">INTERACTIVE POSTER</span>
+</header>
+<main>
+ <div class="intro">
+  <div><p class="kicker">인터랙티브 포스터</p><h1 lang="en">Last Train<span>.</span></h1></div>
+  <p class="instruction">포스터 위를 길게 찢어보세요.<br> 종이 너머로 막차가 지나갑니다.</p>
+ </div>
+ <section class="stage" id="trainStage" aria-label="막차 장면">
+  <canvas id="tearCanvas" width="1440" height="810" tabindex="0" role="button" aria-label="포스터 찢기. 원하는 방향으로 드래그하거나 엔터 키를 눌러 찢으세요." aria-describedby="accessHelp"></canvas>
+  <span class="stage-pill" id="stageHint">길게 드래그해서 찢기</span>
+ </section>
+ <div class="transport">
+  <div class="time-group"><span id="playhead">00:00</span><span class="time-end">/ 00:12</span></div>
+  <div class="time-rail" role="progressbar" aria-label="장면 진행" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0"><span id="progress"></span></div>
+  <button type="button" id="soundToggle" aria-pressed="false" aria-label="현장음 켜기">
+   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z"/><g id="soundWaves" hidden><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></g><path id="soundSlash" d="m16 9 6 6m0-6-6 6"/></svg>
+   <span id="soundLabel">소리 켜기</span>
+  </button>
+ </div>
+ <div class="controls">
+  <div class="action-group">
+   <button class="primary" type="button" id="autoTear"><span class="rip-icon" aria-hidden="true"></span><span>한 번에 열기</span></button>
+   <button class="secondary" type="button" id="cameraTear">손으로 찢기</button>
+   <button class="secondary" type="button" id="replay" disabled>처음부터</button>
+  </div>
+  <button type="button" class="save" id="savePoster" disabled><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5"/></svg>포스터 저장</button>
+ </div>
+ <div class="notes"><span id="sceneStatus" role="status">찢은 자리와 손을 뗀 순간을 한 장으로 간직할 수 있어요.</span><span id="handStatus" aria-live="polite"></span></div>
+ <p class="sr-only" id="accessHelp">엔터 키 또는 한 번에 열기 버튼으로 장면을 열 수 있습니다. 애니메이션 중 캔버스를 짧게 누르거나 스페이스 키를 누르면 현재 순간을 저장용으로 담습니다.</p>
+</main>
+<script src="../hand-control.js" defer></script>
+</body>
+</html>
