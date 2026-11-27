@@ -8,8 +8,8 @@ Two camera stages and three studios for posters, Foley and photography. The lang
 
 | Stage or studio | Make something |
 | --- | --- |
-| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=en) | Pinch to trace starlight, open your palm to cast a nova, and use both hands to open a portal. You can also play with a pointer or touchscreen. |
-| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=en) | Open a front-facing portrait and inspect its geometric mesh. Calibrate a neutral expression, then use your head, expression and fingers to animate the photograph. A manual pose desk works without a camera. |
+| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=en) | Point one finger to charge Cinderlash and flick your wrist to send it across the stage. Raise two fingers for Glass Ward, or open both palms to shape a portal. A mouse, touch or keyboard also works. |
+| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=en) | Choose a person in a photo, calibrate a relaxed pose, and perform with your gaze, expression, fingers and visible joints. Inspect the proportions and edit the landmarks of a drawing or partially visible hand. |
 | [Last Train](https://oyoungsoo97-hub.github.io/night-studies/last-train/?edition=house&lang=en) | Build a film poster with your photo, an ink treatment, a paper tear and a frame from the train sequence. Export a PNG. |
 | [Foley Club](https://oyoungsoo97-hub.github.io/night-studies/foley-club/?edition=house&lang=en) | Score two takes against a film. Adjust cue timing, level and stereo position, then export a 48 kHz stereo WAV. Your own playable MP4 or WebM clip can be up to 60 seconds and 12 MiB. |
 | [Light Table](https://oyoungsoo97-hub.github.io/night-studies/light-table/?edition=house&lang=en) | Add up to five photos, arrange three crops and captions, and export your layout as PNG or JPEG. |
@@ -18,9 +18,13 @@ Two camera stages and three studios for posters, Foley and photography. The lang
 
 ### Performing and saving
 
-Use a well-lit frontal photograph for Portrait Loom. Visible fingers allow the source hands to follow your own. Face-only portraits can use illustrated hands. Manual anchors help with faces the detector misses. Both stages export stills and can record up to 12 seconds of the painted stage in browsers with video recording support.
+Portrait Loom opens JPEG, PNG, WebP, GIF, BMP and AVIF. HEIC requires a browser with a compatible decoder. Animated GIFs use their first frame.
 
-**Save project** keeps your work in this browser’s project library. To move it to another device, choose **Manage → Export file**, then **Import file** in the other browser. A `.nightstudy` file includes the media you imported and the editable settings. Camera access is optional. Frames, imported photos and biometric landmarks are processed on your device. Recording captures the painted stage without microphone audio.
+Portrait Loom can search across a group photo. Select a detected person or draw an area around the subject. You can mark eyes, mouth corners and visible fingertips by hand. Face proportions describe geometry in the source image. The performance deforms the visible surface of that photograph.
+
+Both stages export PNGs and can record up to 12 seconds in browsers that support video recording. Astral Atelier records the visible backdrop. Enable spell sounds before recording to include the synthesized stereo mix. Camera tracking uses video only.
+
+**Save project** keeps your work in this browser’s project library. To move it to another device, choose **Manage → Export file**, then **Import file** in the other browser. A `.nightstudy` file includes the media you imported and the editable settings. Camera frames, imported photos and face, hand and body landmarks are processed on your device.
 
 ### Run locally
 

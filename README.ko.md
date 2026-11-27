@@ -8,17 +8,21 @@
 
 | 무대와 편집실 | 만들 수 있는 것 |
 | --- | --- |
-| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=ko) | 손가락을 모아 별빛 선을 긋고, 손바닥을 펴 신성을 터뜨리고, 양손으로 차원문을 엽니다. 마우스나 터치로도 연주할 수 있습니다. |
-| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=ko) | 정면 인물 사진을 열고 얼굴의 기하 구조와 삼각망을 살펴봅니다. 내 무표정을 기준으로 잡은 뒤 고개, 표정과 손가락으로 사진 속 인물을 움직입니다. 카메라 없이 조절판으로도 포즈를 만들 수 있습니다. |
+| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=ko) | 검지만 뻗어 잿불 채찍을 충전하고 손목을 휘둘러 날립니다. 두 손가락을 V자로 펴 방패를 들거나 두 손바닥 사이에 차원문을 엽니다. 마우스·터치·키보드도 지원합니다. |
+| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=ko) | 사진에서 인물을 선택하고 편안한 자세를 보정한 뒤 시선, 표정, 손가락과 몸 관절로 움직입니다. 얼굴의 비율을 살펴보고 그림이나 일부만 보이는 손에도 기준점을 직접 찍을 수 있습니다. |
 | [Last Train](https://oyoungsoo97-hub.github.io/night-studies/last-train/?edition=house&lang=ko) | 내 사진과 인쇄판, 찢어진 종이, 열차의 한 프레임을 합쳐 영화 포스터를 만들고 PNG로 내보냅니다. |
 | [Foley Club](https://oyoungsoo97-hub.github.io/night-studies/foley-club/?edition=house&lang=ko) | 영화에 효과음 두 테이크를 입힙니다. 큐의 위치, 음량과 좌우 배치를 조절해 48 kHz 스테레오 WAV로 저장합니다. 60초·12 MiB 이하의 MP4나 WebM도 사용할 수 있습니다. |
 | [Light Table](https://oyoungsoo97-hub.github.io/night-studies/light-table/?edition=house&lang=ko) | 내 사진을 최대 다섯 장 불러와 세 컷을 고르고, 구도·캡션·인화지를 편집한 뒤 PNG나 JPEG로 출력합니다. |
 
 ### 공연과 보관
 
-Portrait Loom은 얼굴이 밝고 정면을 향한 사진에서 시작하기 좋습니다. 사진에 손가락이 보이면 원본 손을 움직이고, 얼굴 사진만 있을 때는 그림 손을 쓸 수 있습니다. 얼굴이 검출되지 않으면 기준점을 직접 지정할 수 있습니다. 두 무대 모두 PNG 저장을 지원하며, 브라우저가 영상 녹화를 지원하면 무대 화면을 최대 12초까지 저장할 수 있습니다.
+Portrait Loom은 JPEG, PNG, WebP, GIF, BMP, AVIF를 불러옵니다. HEIC는 해당 형식을 읽을 수 있는 브라우저에서 열 수 있습니다. 움직이는 GIF는 첫 프레임을 사용합니다.
 
-**프로젝트 저장**은 이 브라우저의 작업 보관함에 작업을 남깁니다. 다른 기기로 옮기려면 보관함의 **관리 → 파일 내보내기**를 누르고 새 브라우저에서 **파일 가져오기**를 선택하세요. `.nightstudy` 파일에는 직접 추가한 자료와 편집 설정이 들어 있습니다. 카메라는 선택 사항이고, 카메라 프레임과 사진, 얼굴·손 좌표는 기기 안에서 처리합니다. 녹화에는 무대 화면만 담깁니다.
+단체 사진에서는 검출된 인물을 선택하거나 원하는 인물 주위에 영역을 그리세요. 눈, 입꼬리, 보이는 손가락 끝은 직접 지정할 수 있습니다. 얼굴 측정값은 사진 속 비율을 나타냅니다. 공연 중에는 사진에 보이는 면이 내 동작을 따라 변형됩니다.
+
+두 무대에서 PNG를 저장할 수 있고, 영상 녹화를 지원하는 브라우저에서는 최대 12초를 녹화할 수 있습니다. Astral Atelier는 현재 보이는 배경까지 담습니다. 녹화 전에 주문음을 켜면 스테레오 효과음도 함께 저장됩니다. 카메라 추적은 영상만 사용합니다.
+
+**프로젝트 저장**은 이 브라우저의 작업 보관함에 작업을 남깁니다. 다른 기기로 옮기려면 보관함의 **관리 → 파일 내보내기**를 누르고 새 브라우저에서 **파일 가져오기**를 선택하세요. `.nightstudy` 파일에는 직접 추가한 자료와 편집 설정이 들어 있습니다. 카메라 영상, 가져온 사진과 얼굴·손·몸의 기준점은 기기 안에서 처리합니다.
 
 ### 로컬 실행
 

@@ -1,4 +1,15 @@
 const words={
+ bolt:['잿불 채찍','Cinderlash','Glutpeitsche'],shield:['유리결 방패','Glass Ward','Glaswehr'],
+ boltPractice:['누르고 마력을 모은 뒤, 날릴 방향으로 휘두르며 놓으세요.','Hold to charge, flick toward a target and release.','Halte zum Aufladen, wische zum Ziel und lass los.'],
+ shieldPractice:['누른 채 움직여 방패를 펼치고 자리를 잡으세요.','Hold to raise a shield. Move it into the path of a bolt.','Halte, um einen Schild zu heben. Schiebe ihn in die Flugbahn eines Blitzes.'],
+ boltLive:['검지만 앞으로 뻗어 마력을 모으고 손목을 휘두르세요.','Point one index finger to charge, then flick your wrist.','Strecke nur den Zeigefinger zum Aufladen und schnippe mit dem Handgelenk.'],
+ shieldLive:['검지와 중지를 V자로 펼쳐 방패를 유지하세요.','Hold up two fingers in a V to raise and steer a shield.','Halte zwei Finger als V hoch, um einen Schild zu heben und zu lenken.'],
+ boltCast:['잿불이 날아갑니다.','Cinderlash away.','Glutpeitsche abgefeuert.'],shieldCast:['방패가 자리 잡았어요.','Glass Ward set.','Glaswehr gesetzt.'],
+ charging:['마력 충전','Charging','Lädt'],shielding:['방패 유지','Shield raised','Schild aktiv'],hit:['잿불이 충돌했어요.','Cinderlash struck.','Glutpeitsche eingeschlagen.'],deflect:['방패가 잿불을 막았어요.','The ward caught the bolt.','Der Schild hat den Blitz abgefangen.'],
+ soundOn:['주문음 켬','Sound on','Klang an'],soundOff:['주문음 끔','Sound off','Klang aus'],
+ soundFail:['이 브라우저에서 소리를 켤 수 없어요.','Sound is unavailable in this browser.','Der Klang ist in diesem Browser nicht verfügbar.'],
+ castKey:['방향키로 조준하고 Enter로 발사하세요.','Aim with the arrow keys, then press Enter to release.','Ziele mit den Pfeiltasten und drücke zum Auslösen Enter.'],
+
  library:['작업 보관함','Library','Archiv'],saveProject:['프로젝트 저장','Save project','Projekt speichern'],
  intro:['밤하늘을 손으로 연주하세요. 별빛을 잇고, 신성을 터뜨리고, 두 손 사이에 차원문을 여세요.','Perform with the night sky. Trace starlight, cast a nova and open a portal between your palms.','Spiele mit dem Nachthimmel. Ziehe Sternenspuren, entfache eine Nova und öffne ein Portal zwischen deinen Händen.'],
  expand:['전체 화면','Full screen','Vollbild'],collapse:['전체 화면 닫기','Exit full screen','Vollbild beenden'],
@@ -21,7 +32,7 @@ const words={
  permission:['브라우저에서 카메라 사용을 허용하세요.','Allow camera access in your browser.','Erlaube den Kamerazugriff im Browser.'],
  loading:['손동작 모델을 불러오고 있어요.','Loading the hand model.','Das Handmodell wird geladen.'],
  ready:['손이 보이도록 카메라 앞에 서세요. 영상은 이 기기에서 처리됩니다.','Place your hands in view. Video is processed on this device.','Halte deine Hände ins Bild. Das Video wird auf diesem Gerät verarbeitet.'],
- readyBackdrop:['거울 화면이 켜졌어요. 현재 카메라 영상은 PNG에 포함되며 프로젝트에는 주문만 저장돼요.','Your mirror is live. PNGs include the visible camera frame. Projects store only your spells.','Dein Spiegelbild ist aktiv. PNGs enthalten das sichtbare Kamerabild. Projekte speichern nur deine Zauber.'],
+ readyBackdrop:['거울 화면이 켜졌어요. 현재 보이는 카메라 영상은 PNG와 녹화에 포함됩니다. 프로젝트 파일에는 주문이 저장돼요.','Your mirror is live. PNGs and recordings include the visible camera backdrop. Projects store only your spells.','Dein Spiegelbild ist aktiv. PNGs und Aufnahmen enthalten das sichtbare Kamerabild. Projekte speichern nur deine Zauber.'],
  lost:['손을 카메라 안으로 다시 가져오세요.','Bring your hands back into view.','Halte deine Hände wieder ins Bild.'],
  ended:['카메라를 껐어요. 무대에서 바로 연습할 수 있어요.','Camera stopped. You can keep practising on the stage.','Kamera beendet. Du kannst auf der Bühne weiterüben.'],
  error:['카메라나 손동작 모델을 열지 못했어요. 네트워크와 카메라 권한을 확인하거나 연습 무대를 사용하세요.','Could not open the camera or its hand model. Check the connection and camera permission, or use the practice stage.','Kamera oder Handmodell konnte nicht geöffnet werden. Prüfe Verbindung und Kamerazugriff oder nutze die Übungsbühne.'],
@@ -30,7 +41,7 @@ const words={
  calibrated:['손 크기를 맞췄어요. 엄지와 검지를 맞대서 그려 보세요.','Hand size calibrated. Pinch your thumb and index finger to draw.','Handgröße kalibriert. Lege Daumen und Zeigefinger zum Zeichnen zusammen.'],
  calibrationFailed:['손을 측정하지 못했어요. 더 밝은 곳에서 다시 시도하세요.','The hand could not be measured. Try again in better light.','Die Hand konnte nicht gemessen werden. Versuche es bei besserem Licht erneut.'],
  saving:['장면을 인화하고 있어요.','Preparing your still.','Das Bild wird vorbereitet.'],saved:['장면을 PNG로 저장했어요.','Scene captured as a PNG.','Szene als PNG gespeichert.'],saveFail:['장면을 저장하지 못했어요. 다시 시도하세요.','Could not save the still. Please try again.','Das Bild konnte nicht gespeichert werden. Versuche es erneut.'],
- backdropOn:['화면에 보이는 카메라 영상은 PNG에 포함됩니다. 프로젝트에는 주문만 저장됩니다.','The visible camera frame is included in the PNG. Projects store only your spells.','Das sichtbare Kamerabild erscheint im PNG. Projekte speichern nur deine Zauber.'],
+ backdropOn:['화면에 보이는 카메라 영상은 PNG와 녹화에 포함됩니다. 프로젝트에는 주문만 저장됩니다.','PNGs and recordings include the visible camera backdrop. Projects store only your spells.','Das sichtbare Kamerabild erscheint in PNGs und Aufnahmen. Projekte speichern nur deine Zauber.'],
  max:['주문 72개를 모두 사용했어요. 새 주문을 추가하려면 하나를 되돌리세요.','All 72 spell slots are filled. Undo a spell to make room.','Alle 72 Zauberplätze sind belegt. Entferne einen Zauber, um Platz zu schaffen.'],
  restored:['저장한 별자리와 주문을 열었어요.','Your spell composition is open.','Deine Zauberkomposition ist geöffnet.'],
  bad:['이 주문 프로젝트를 읽을 수 없어요.','This spell project could not be read.','Dieses Zauberprojekt kann nicht gelesen werden.'],
@@ -38,6 +49,12 @@ const words={
  inkKey:['방향키로 선을 그리고 Enter로 마치세요.','Draw with the arrow keys, then press Enter to finish.','Zeichne mit den Pfeiltasten und schließe mit Enter ab.'],
  expandFail:['이 브라우저에서는 전체 화면을 열 수 없어요.','Full screen is unavailable in this browser.','Vollbild wird in diesem Browser nicht unterstützt.']
 };
+Object.assign(words,{
+ intro:['손끝을 지팡이로 바꾸세요. 잿불을 날리고 방패를 들어 소용돌이 속으로 빛을 쏘세요.','Turn your hand into a wand. Sling embers, raise a glass shield and send a bolt into the vortex.','Verwandle deine Hand in einen Zauberstab. Schleudere Glut, hebe den Glasschild und ziele in den Strudel.'],
+ first:['지팡이가 준비됐어요.','Wand ready.','Zauberstab bereit.'],
+ idleNotice:['무대를 누른 채 마력을 모으고 휘둘러 놓으세요. 키보드는 Enter로 시작하고 방향키로 조준한 뒤 Enter로 발사합니다.','Hold on the stage, flick and release. On a keyboard, press Enter, aim with the arrow keys, then press Enter to cast.','Halte auf der Bühne, wische und lass los. Mit der Tastatur startest du mit Enter, zielst mit den Pfeiltasten und löst mit Enter aus.'],
+ scope:['마법 무대. 방향키로 조준하고 Enter로 시작하거나 발사합니다.','Spell stage. Aim with the arrow keys. Enter starts or releases your spell.','Zauberbühne. Ziele mit den Pfeiltasten. Enter beginnt den Zauber oder löst ihn aus.']
+});
 export const lang=()=>window.NightI18n?.lang||'ko';
 export const T=key=>{const value=words[key];if(!value)return '';return window.NightI18n?.t?.(...value)||value[{ko:0,en:1,de:2}[lang()]??0];};
 export function counter(count){return lang()==='de'?count+' '+(count===1?'Zauber':'Zauber'):lang()==='en'?count+' '+(count===1?'spell':'spells'):'주문 '+count+'개';}

@@ -1,6 +1,9 @@
+import {analysePortrait} from './photo-analysis.mjs?v=50bd6e5844';
+
 // Both studios share one loader. Media stays on the device, including still-image analysis.
 const assets = new URL('./assets/hands/', import.meta.url);
 const models = {
+  'pose-lite': '59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a',
   hands: 'fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1',
   face: '64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff'
 };
@@ -31,17 +34,20 @@ function loadRuntime() {
   return runtime;
 }
 async function createTask(kind, mode, signal) {
-  const [{lib,files}, weights] = await Promise.all([loadRuntime(),model(kind)]);
+  const [{lib,files}, weights] = await Promise.all([loadRuntime(),model(kind==='pose'?'pose-lite':kind)]);
   // MediaPipe initializes its WASM factory on the global object. Sequence independent tasks.
   const build = async () => {
     check(signal);
-    const isFace=kind==='face';
-    const Task=isFace ? lib.FaceLandmarker : lib.HandLandmarker;
-    const settings=isFace?{numFaces:1,outputFaceBlendshapes:true,minFaceDetectionConfidence:.42,minFacePresenceConfidence:.42}
-                         :{numHands:2,minHandDetectionConfidence:.42,minHandPresenceConfidence:.42};
+    const still=mode==='IMAGE';
+    const Task={face:lib.FaceLandmarker,hands:lib.HandLandmarker,pose:lib.PoseLandmarker}[kind];
+    const settings={
+      face:{numFaces:still?5:1,outputFaceBlendshapes:true,minFaceDetectionConfidence:.42,minFacePresenceConfidence:.42},
+      hands:{numHands:still?4:2,minHandDetectionConfidence:.42,minHandPresenceConfidence:.42},
+      pose:{numPoses:still?3:1,outputSegmentationMasks:still,minPoseDetectionConfidence:.42,minPosePresenceConfidence:.42}
+    }[kind];
     let task;
     for(const delegate of ['GPU','CPU']){
-      try {task=await Task.createFromOptions(files,{runningMode:mode,...settings,baseOptions:{delegate,modelAssetBuffer:weights}});break;}
+      try {task=await Task.createFromOptions(files,{runningMode:mode,...settings,...(kind==='pose'&&delegate==='CPU'?{outputSegmentationMasks:false}:{}),baseOptions:{delegate,modelAssetBuffer:weights}});break;}
       catch(error){if(delegate==='CPU')throw error;check(signal);}
     }
     if(signal?.aborted){task.close();check(signal);}
@@ -57,22 +63,13 @@ function readFace(result) {
   if (!result?.faceLandmarks?.length) return null;
   return {landmarks:result.faceLandmarks[0],blendshapes:Object.fromEntries((result.faceBlendshapes?.[0]?.categories||[]).map(c=>[c.categoryName,c.score]))};
 }
-export async function detectPortrait(image,{signal}={}) {
-  check(signal);
-  let faceTask,handTask;
-  try{
-    faceTask=await createTask('face','IMAGE',signal);
-    const face=readFace(faceTask.detect(image));
-    faceTask.close();faceTask=null;check(signal);
-    handTask=await createTask('hands','IMAGE',signal);
-    return {face,hands:readHands(handTask.detect(image))};
-  }finally{faceTask?.close();handTask?.close();}
-}
-export async function startTracking({video,hands=true,face=false,onFrame=()=>{},onStatus=()=>{},signal}){
+export const detectPortrait=(image,options)=>analysePortrait(image,createTask,options);
+export async function startTracking({video,hands=true,face=false,pose=false,onFrame=()=>{},onStatus=()=>{},signal}){
   check(signal);
   if (!navigator.mediaDevices?.getUserMedia || !window.isSecureContext)throw new DOMException('Camera unavailable','NotSupportedError');
-  if (!hands && !face) throw Error('NO_TRACKER');
+  if (!hands && !face && !pose) throw Error('NO_TRACKER');
   const controller=new AbortController();
+  let lastPoseTime=-Infinity,lastPose=null,poseTask;
   let stream,handTask,faceTask,raf=0,stopped=false,prevVideo=-1,lastRun=-Infinity,missingSince=0,lost=false;
   const hidden=()=>{if(document.hidden)stop();};
   function stop(code='ended') {
@@ -82,7 +79,7 @@ export async function startTracking({video,hands=true,face=false,onFrame=()=>{},
     signal?.removeEventListener('abort',stopExternal);
     stream?.getTracks().forEach(track=>track.stop());
     if(stream && video.srcObject===stream){video.pause();video.srcObject=null;}
-    handTask?.close();faceTask?.close();handTask=faceTask=null;
+    handTask?.close();faceTask?.close();poseTask?.close();handTask=faceTask=poseTask=null;lastPose=null;
     onStatus(code);
   }
   function stopExternal(){stop();}
@@ -92,8 +89,13 @@ export async function startTracking({video,hands=true,face=false,onFrame=()=>{},
     if(video.readyState<2 || video.currentTime===prevVideo || now-lastRun<48)return;
     prevVideo=video.currentTime;lastRun=now;
     try {
-      const data={time:now,hands:readHands(handTask?.detectForVideo(video,now)),face:readFace(faceTask?.detectForVideo(video,now))};
-      if(data.face||data.hands.length){if(lost)onStatus('ready');lost=false;missingSince=0;}
+      if(poseTask && now-lastPoseTime>=100){
+        lastPoseTime=now;
+        try{const points=poseTask.detectForVideo(video,now).landmarks?.[0];lastPose=points?{landmarks:points}:null;}
+        catch{poseTask.close();poseTask=null;lastPose=null;}
+      }
+      const data={time:now,pose:lastPose,hands:readHands(handTask?.detectForVideo(video,now)),face:readFace(faceTask?.detectForVideo(video,now))};
+      if(data.face||data.hands.length||data.pose){if(lost)onStatus('ready');lost=false;missingSince=0;}
       else if(!missingSince)missingSince=now;
       else if(!lost && now-missingSince>650){lost=true;onStatus('lost');}
       onFrame(data);
@@ -111,6 +113,8 @@ export async function startTracking({video,hands=true,face=false,onFrame=()=>{},
     onStatus('loading');
     if(hands)handTask=await createTask('hands','VIDEO',controller.signal);check(controller.signal);
     if(face)faceTask=await createTask('face','VIDEO',controller.signal);check(controller.signal);
+    if(pose){try{poseTask=await createTask('pose','VIDEO',controller.signal);}catch(error){check(controller.signal);}}
+    check(controller.signal);
     onStatus('ready');raf=requestAnimationFrame(frame);
     return {stop:stopExternal};
   }catch(error){stop(error?.name==='AbortError'?'ended':'error');throw error;}

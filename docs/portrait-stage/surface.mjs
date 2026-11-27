@@ -50,11 +50,11 @@ export function makeSurface(canvas){
   let layer=document.createElement('canvas'),gpu;try{gpu=webgl(layer);}catch{}if(!gpu)layer=document.createElement('canvas');
   const ctx=canvas.getContext('2d',{alpha:false});let photo,rig;
   function set(image,model){photo=image;rig=model;if(gpu)gpu.set(photo,rig);}
-  function draw({pose,targets=[],puppets=[],raw=false,markers=false,anchors=[],rulers=[]},width,height){
+  function draw({pose,targets=[],puppets=[],raw=false,markers=false,anchors=[],rulers=[],area=null,body=null},width,height){
     if(!photo||!rig)return;const w=width||canvas.width,h=height||canvas.height;
     if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}if(layer.width!==w||layer.height!==h){layer.width=w;layer.height=h;}
     if(raw){ctx.drawImage(photo,0,0,w,h);return;}
-    const dest=rig.deform(pose,targets);
+    const dest=rig.deform(pose,targets);if(body&&rig.body?.enabled)rig.body.deform(dest,body,targets);
     if(gpu){gpu.draw(rig,dest);ctx.drawImage(layer,0,0,w,h);}else triangleDraw(ctx,photo,rig.source,dest,rig.indices,w,h);
     if(rig.lips&&pose.jaw>.08){
       // Separate the inner lip edges on a closed-mouth source using the posed landmarks.
@@ -63,9 +63,12 @@ export function makeSurface(canvas){
     }
     puppets.forEach((hand,side)=>{if(hand)drawHand(ctx,hand,side,w,h,rig.aspect);});
     if(markers){
-      ctx.save();ctx.strokeStyle='rgba(213,255,175,.55)';ctx.lineWidth=Math.max(.55,w*.0007);ctx.beginPath();const I=rig.indices;
+      ctx.save();ctx.strokeStyle='rgba(213,255,175,.28)';ctx.lineWidth=Math.max(.55,w*.0007);ctx.beginPath();const I=rig.indices;
       for(let i=0;i<I.length;i+=3){const a=I[i]*2,b=I[i+1]*2,c=I[i+2]*2;ctx.moveTo(dest[a]*w,dest[a+1]*h);ctx.lineTo(dest[b]*w,dest[b+1]*h);ctx.lineTo(dest[c]*w,dest[c+1]*h);ctx.closePath();}ctx.stroke();ctx.restore();}
+    if(markers&&rig.joints){const points=body||rig.joints;ctx.save();ctx.strokeStyle='#e6a5d7';ctx.fillStyle='#ffd9f4';ctx.lineWidth=Math.max(1.2,w*.0022);const links=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
+      for(const [a,b] of links){if((rig.joints[a].visibility??1)<.45||(rig.joints[b].visibility??1)<.45)continue;const s=points[a],t=points[b];ctx.beginPath();ctx.moveTo(s.x*w,s.y*h);ctx.lineTo(t.x*w,t.y*h);ctx.stroke();for(const pt of [s,t]){ctx.beginPath();ctx.arc(pt.x*w,pt.y*h,w*.003,0,Math.PI*2);ctx.fill();}}ctx.restore();}
     if(rulers.length){ctx.save();ctx.strokeStyle='#fff39b';ctx.fillStyle='#fff39b';ctx.lineWidth=Math.max(1.5,w*.002);ctx.setLineDash([w*.010,w*.006]);for(const [a,b] of rulers){ctx.beginPath();ctx.moveTo(a.x*w,a.y*w);ctx.lineTo(b.x*w,b.y*w);ctx.stroke();for(const p of [a,b]){ctx.beginPath();ctx.arc(p.x*w,p.y*w,Math.max(2,w*.0035),0,Math.PI*2);ctx.fill();}}ctx.restore();}
+    if(area){ctx.save();ctx.strokeStyle='#eafb94';ctx.fillStyle='rgba(228,245,154,.12)';ctx.lineWidth=Math.max(2,w*.003);ctx.fillRect(area.x*w,area.y*h,area.width*w,area.height*h);ctx.strokeRect(area.x*w,area.y*h,area.width*w,area.height*h);ctx.restore();}
     for(const p of anchors){ctx.beginPath();ctx.arc(p.x*w,p.y*h,Math.max(5,w*.011),0,Math.PI*2);ctx.strokeStyle='#eeff86';ctx.lineWidth=Math.max(2,w*.004);ctx.stroke();}
   }
   return {set,draw,gpu:!!gpu};
