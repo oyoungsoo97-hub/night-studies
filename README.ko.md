@@ -8,8 +8,8 @@
 
 | 무대와 편집실 | 만들 수 있는 것 |
 | --- | --- |
-| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=ko) | 검지만 뻗어 잿불 채찍을 충전하고 손목을 휘둘러 날립니다. 두 손가락을 V자로 펴 방패를 들거나 두 손바닥 사이에 차원문을 엽니다. 마우스·터치·키보드도 지원합니다. |
-| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=ko) | 사진에서 인물을 선택하고 편안한 자세를 보정한 뒤 시선, 표정, 손가락과 몸 관절로 움직입니다. 얼굴의 비율을 살펴보고 그림이나 일부만 보이는 손에도 기준점을 직접 찍을 수 있습니다. |
+| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=ko) | 은빛 입자 구름을 한 손으로 모아 옮기고, 두 손 사이로 늘였다가 펼쳐 흩뿌립니다. 지팡이를 고르면 잿불을 날려 방패에 맞힐 수 있습니다. |
+| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=ko) | 올린 사진에서 재질이 입혀진 3D 인물을 만듭니다. 인물을 돌려 보고 조명을 바꾸거나, 카메라로 연기한 포즈를 GLB 모델로 저장할 수 있습니다. |
 | [Last Train](https://oyoungsoo97-hub.github.io/night-studies/last-train/?edition=house&lang=ko) | 내 사진과 인쇄판, 찢어진 종이, 열차의 한 프레임을 합쳐 영화 포스터를 만들고 PNG로 내보냅니다. |
 | [Foley Club](https://oyoungsoo97-hub.github.io/night-studies/foley-club/?edition=house&lang=ko) | 영화에 효과음 두 테이크를 입힙니다. 큐의 위치, 음량과 좌우 배치를 조절해 48 kHz 스테레오 WAV로 저장합니다. 60초·12 MiB 이하의 MP4나 WebM도 사용할 수 있습니다. |
 | [Light Table](https://oyoungsoo97-hub.github.io/night-studies/light-table/?edition=house&lang=ko) | 내 사진을 최대 다섯 장 불러와 세 컷을 고르고, 구도·캡션·인화지를 편집한 뒤 PNG나 JPEG로 출력합니다. |
@@ -18,7 +18,7 @@
 
 Portrait Loom은 JPEG, PNG, WebP, GIF, BMP, AVIF를 불러옵니다. HEIC는 해당 형식을 읽을 수 있는 브라우저에서 열 수 있습니다. 움직이는 GIF는 첫 프레임을 사용합니다.
 
-단체 사진에서는 검출된 인물을 선택하거나 원하는 인물 주위에 영역을 그리세요. 눈, 입꼬리, 보이는 손가락 끝은 직접 지정할 수 있습니다. 얼굴 측정값은 사진 속 비율을 나타냅니다. 공연 중에는 사진에 보이는 면이 내 동작을 따라 변형됩니다.
+단체 사진에서는 한 사람을 고르고, 그림에서는 눈과 입을 직접 표시할 수 있습니다. 인물을 드래그하거나 회전 슬라이더를 움직여 옆과 뒤를 보세요. 조명을 바꾸면 코와 턱, 손가락에 맺히는 빛과 그림자가 달라집니다. 보이는 면에는 사진을 입히고, 가려진 면의 형태와 재질은 사진 한 장을 바탕으로 추정합니다. **3D 모델 저장**은 현재 포즈와 재질을 GLB로 저장합니다. **프로젝트 저장**으로 연기 설정을 다시 편집할 수 있습니다.
 
 두 무대에서 PNG를 저장할 수 있고, 영상 녹화를 지원하는 브라우저에서는 최대 12초를 녹화할 수 있습니다. Astral Atelier는 현재 보이는 배경까지 담습니다. 녹화 전에 주문음을 켜면 스테레오 효과음도 함께 저장됩니다. 카메라 추적은 영상만 사용합니다.
 

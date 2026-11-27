@@ -1,4 +1,12 @@
 const words={
+ dust:['은하 먼지','Silver Drift','Silberstaub'],dustPractice:['누른 채 움직여 입자를 모으고, 손을 떼어 흩뿌리세요.','Hold and sweep to gather particles. Release to scatter them.','Halte und ziehe, um Partikel zu sammeln. Lass los, um sie zu verstreuen.'],
+ dustLive:['엄지와 검지를 맞대어 모으고 손바닥을 펴서 흩뿌리세요.','Pinch to gather a cloud. Open your palm to scatter it.','Sammle mit Daumen und Zeigefinger eine Wolke. Öffne die Hand, um sie zu verstreuen.'],
+ dustReady:['입자가 흐르고 있어요.','Silver Drift is flowing.','Der Silberstaub strömt.'],dustGather:['손끝에 입자가 모이고 있어요.','Gathering at your fingertips.','Die Partikel sammeln sich an deinen Fingerspitzen.'],dustFan:['입자가 흩어집니다.','Particles scattering.','Die Partikel zerstreuen sich.'],
+ dustBrush:['손의 움직임을 따라 흐릅니다.','Following your movement.','Der Staub folgt deiner Bewegung.'],dustUndo:['이전 입자 흐름으로 돌아왔어요.','Previous drift restored.','Vorherige Strömung wiederhergestellt.'],
+ dustCount:['개의 입자','particles','Partikel'],dustClear:['입자 흐름과 배치한 주문을 초기화할까요?','Reset the drift and clear your placed spells?','Die Strömung zurücksetzen und gesetzte Zauber entfernen?'],
+ dustIntensity:['입자 밀도','Particle density','Partikeldichte'],dustProject:['나의 은하 먼지','My Silver Drift','Mein Silberstaub'],
+ dustKeys:['누른 채로 움직인 뒤 놓으세요. 키보드는 Enter로 모으고 방향키로 움직인 뒤 Enter로 흩뿌립니다.','Hold, sweep, then release. On a keyboard, press Enter to gather, move with the arrow keys and press Enter to scatter.','Halte, ziehe und lass los. Mit der Tastatur sammelst du mit Enter, bewegst die Wolke mit den Pfeiltasten und verstreust sie mit Enter.'],
+
  bolt:['잿불 채찍','Cinderlash','Glutpeitsche'],shield:['유리결 방패','Glass Ward','Glaswehr'],
  boltPractice:['누르고 마력을 모은 뒤, 날릴 방향으로 휘두르며 놓으세요.','Hold to charge, flick toward a target and release.','Halte zum Aufladen, wische zum Ziel und lass los.'],
  shieldPractice:['누른 채 움직여 방패를 펼치고 자리를 잡으세요.','Hold to raise a shield. Move it into the path of a bolt.','Halte, um einen Schild zu heben. Schiebe ihn in die Flugbahn eines Blitzes.'],
@@ -55,6 +63,16 @@ Object.assign(words,{
  idleNotice:['무대를 누른 채 마력을 모으고 휘둘러 놓으세요. 키보드는 Enter로 시작하고 방향키로 조준한 뒤 Enter로 발사합니다.','Hold on the stage, flick and release. On a keyboard, press Enter, aim with the arrow keys, then press Enter to cast.','Halte auf der Bühne, wische und lass los. Mit der Tastatur startest du mit Enter, zielst mit den Pfeiltasten und löst mit Enter aus.'],
  scope:['마법 무대. 방향키로 조준하고 Enter로 시작하거나 발사합니다.','Spell stage. Aim with the arrow keys. Enter starts or releases your spell.','Zauberbühne. Ziele mit den Pfeiltasten. Enter beginnt den Zauber oder löst ihn aus.']
 });
+words.intro=['카메라 앞에서 은빛 입자를 모아 흩뿌리거나, 손끝으로 방패와 차원문을 여세요.','Gather silver dust in your hands, scatter it across the mirror, or switch to a shield or a portal.','Sammle Silberstaub mit den Händen, verstreue ihn im Spiegel oder wechsle zum Schild oder Portal.'];
+Object.assign(words,{
+ dustPractice:['길게 눌러 모으고 놓아 흩뿌리세요. 두 손가락이나 Shift+드래그로 구름을 늘일 수 있어요.','Hold to gather, release to scatter. Use two fingers or Shift-drag to stretch the cloud.','Halte zum Sammeln und lass zum Verstreuen los. Mit zwei Fingern oder Umschalt-Ziehen dehnst du die Wolke.'],
+ dustLive:['두 손 사이에서 구름을 늘이고, 한 손으로 옮기세요. 손끝을 맞대 모은 뒤 손바닥을 펴면 흩어집니다.','Stretch the cloud between your palms or carry it with one hand. Pinch to charge, then open to scatter.','Spanne die Wolke zwischen beiden Händen oder trage sie mit einer. Kneife zum Aufladen und öffne die Hand zum Verstreuen.'],
+ dustKeys:['터치나 마우스를 누른 채 움직이세요. 키보드는 Enter로 모으고 방향키로 이동합니다. X로 한쪽 끝을 고정하고 Enter로 흩뿌리세요.','Hold and move on the stage. With a keyboard, press Enter to gather, use the arrows to move and X to anchor one end. Press Enter to scatter.','Halte und ziehe auf der Bühne. Per Tastatur sammelst du mit Enter, bewegst dich mit den Pfeiltasten und fixierst ein Ende mit X. Enter verstreut die Wolke.'],
+ dustCarry:['손바닥 위에 구름이 떠 있어요.','Cloud resting in your palm.','Die Wolke schwebt über deiner Hand.'],
+ dustStretch:['두 손 사이에서 구름이 늘어납니다.','Cloud suspended between your hands.','Die Wolke spannt sich zwischen deinen Händen.'],
+});
 export const lang=()=>window.NightI18n?.lang||'ko';
 export const T=key=>{const value=words[key];if(!value)return '';return window.NightI18n?.t?.(...value)||value[{ko:0,en:1,de:2}[lang()]??0];};
 export function counter(count){return lang()==='de'?count+' '+(count===1?'Zauber':'Zauber'):lang()==='en'?count+' '+(count===1?'spell':'spells'):'주문 '+count+'개';}
+
+export const dustCounter=count=>lang()==='ko'?'입자 '+count+'개':count+' '+T('dustCount');

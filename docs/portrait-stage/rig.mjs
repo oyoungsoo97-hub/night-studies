@@ -1,4 +1,4 @@
-import {handInfluence} from './anatomy.mjs?v=2070598b2d';
+import {handInfluence} from './anatomy.mjs?v=946a6ad1ea';
 // Positions are in photo-width units so rotation and distance preserve pixel proportions.
 export const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const hypot=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -56,7 +56,7 @@ function triangulate(points,aspect){
   }
   return new Uint16Array(tris.filter(t=>t.ids.every(i=>i<n)).flatMap(t=>t.ids));
 }
-export function handPoints(hand,aspect){return hand.landmarks.map(pt=>({x:pt.x,y:pt.y*aspect}));}
+export function handPoints(hand,aspect){return hand.landmarks.map(pt=>({x:pt.x,y:pt.y*aspect,z:pt.z??0}));}
 export function retargetHand(original,current,base,gain,mirror){
   if(!current||!base)return null;
   const S=original, C=current, B=base;
@@ -70,13 +70,18 @@ export function retargetHand(original,current,base,gain,mirror){
     const turn=clamp(radians(angle(C)-angle(B))*gain,-1.25,1.25)*flip;
     const length=restLength*clamp(1+(hypot(C[a],C[b])/Math.max(.003,baseLength)-1)*gain,.5,1.3);
     target[b]={x:target[a].x+Math.cos(angle(S)+turn)*length,y:target[a].y+Math.sin(angle(S)+turn)*length};}}
+  const depthScale=gain*hypot(S[0],S[9])/Math.max(.018,hypot(B[0],B[9]));
+  for(let i=0;i<target.length;i++){
+    const delta=(B[i].z-B[0].z)-(C[i].z-C[0].z);
+    target[i].dz=Number.isFinite(delta)?clamp(delta*depthScale,-reach,reach):0;
+  }
   return target;
 }
 export function manualHand(original,amount,side){
   if(!amount)return null;const palm=Math.max(.02,hypot(original[0],original[9]));
   const a=amount*.40*(side?1:-1),target=original.map((p,i)=>{
     const x=p.x-original[0].x,y=p.y-original[0].y;
-    return {x:original[0].x+x*Math.cos(a)-y*Math.sin(a)+amount*palm*.2*(side?-1:1),y:original[0].y+x*Math.sin(a)+y*Math.cos(a)-amount*palm*.29+((i%4===0&&i>0)?amount*.1*palm:0)};});return target;
+    return {x:original[0].x+x*Math.cos(a)-y*Math.sin(a)+amount*palm*.2*(side?-1:1),y:original[0].y+x*Math.sin(a)+y*Math.cos(a)-amount*palm*.29+((i%4===0&&i>0)?amount*.1*palm:0),dz:p.dz||0};});return target;
 }
 function buildFaceWeights(p,face,aspect){
   if(!face?.landmarks?.[454])return null;

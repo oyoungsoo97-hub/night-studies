@@ -8,8 +8,8 @@ Two camera stages and three studios for posters, Foley and photography. The lang
 
 | Stage or studio | Make something |
 | --- | --- |
-| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=en) | Point one finger to charge Cinderlash and flick your wrist to send it across the stage. Raise two fingers for Glass Ward, or open both palms to shape a portal. A mouse, touch or keyboard also works. |
-| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=en) | Choose a person in a photo, calibrate a relaxed pose, and perform with your gaze, expression, fingers and visible joints. Inspect the proportions and edit the landmarks of a drawing or partially visible hand. |
+| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=en) | Gather a cloud of silver particles, carry it with a hand, stretch it between your palms and release it. Choose the wand to send Cinderlash into Glass Ward. |
+| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=en) | Build a textured 3D character from an uploaded photo. Orbit the figure, light the face, perform with your camera and export the current pose as a GLB model. |
 | [Last Train](https://oyoungsoo97-hub.github.io/night-studies/last-train/?edition=house&lang=en) | Build a film poster with your photo, an ink treatment, a paper tear and a frame from the train sequence. Export a PNG. |
 | [Foley Club](https://oyoungsoo97-hub.github.io/night-studies/foley-club/?edition=house&lang=en) | Score two takes against a film. Adjust cue timing, level and stereo position, then export a 48 kHz stereo WAV. Your own playable MP4 or WebM clip can be up to 60 seconds and 12 MiB. |
 | [Light Table](https://oyoungsoo97-hub.github.io/night-studies/light-table/?edition=house&lang=en) | Add up to five photos, arrange three crops and captions, and export your layout as PNG or JPEG. |
@@ -20,7 +20,7 @@ Two camera stages and three studios for posters, Foley and photography. The lang
 
 Portrait Loom opens JPEG, PNG, WebP, GIF, BMP and AVIF. HEIC requires a browser with a compatible decoder. Animated GIFs use their first frame.
 
-Portrait Loom can search across a group photo. Select a detected person or draw an area around the subject. You can mark eyes, mouth corners and visible fingertips by hand. Face proportions describe geometry in the source image. The performance deforms the visible surface of that photograph.
+Choose a person in a group shot or mark the eyes and mouth of a drawing. Drag on the 3D figure to orbit, or use the rotation slider. Change the light to see the depth of the nose, the chin and the fingers. The visible surfaces use the photograph. The shape and materials of the hidden sides are estimated from that view. **Export 3D model** saves the current pose and its textures as a GLB. A **Save project** file keeps the editable performance.
 
 Both stages export PNGs and can record up to 12 seconds in browsers that support video recording. Astral Atelier records the visible backdrop. Enable spell sounds before recording to include the synthesized stereo mix. Camera tracking uses video only.
 

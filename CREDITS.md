@@ -18,6 +18,10 @@
 
 [Face Mesh model card](https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Face%20Mesh%20V2.pdf) · [Blendshape model card](https://storage.googleapis.com/mediapipe-assets/Model%20Card%20Blendshape%20V2.pdf) · [Hand tracking model card](https://storage.googleapis.com/mediapipe-assets/Model%20Card%20Hand%20Tracking%20%28Lite_Full%29%20with%20Fairness%20Oct%202021.pdf)
 
+The 3D face uses the landmark ordering and triangles of Google’s [MediaPipe canonical face model](https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/modules/face_geometry/data/canonical_face_model.obj) under [Apache 2.0](docs/assets/hands/LICENSE.txt). The mesh positions, skull, materials, body and pose are fitted in the browser. Source OBJ SHA-256: `8bac80443397e113f41a8b565ea72c59390bc031d9defab289dba7bc0c54e618`.
+
+은하 먼지의 양손 입자 연출은 Grace의 손 추적 작업에서 영감을 받았습니다. Silver Drift’s hand choreography was inspired by Grace’s particle performance. Die Handchoreografie für Silberstaub ist von Graces Partikel-Performance inspiriert. [GraceFX · @gracengo_](https://www.instagram.com/p/DfRBhLuhKV9/)
+
 ## Fonts · 글꼴 · Schriften
 
 [Barlow Condensed — SIL Open Font License](docs/assets/fonts/barlow-OFL.txt) · [Instrument Serif — SIL Open Font License](docs/assets/fonts/instrument-OFL.txt)

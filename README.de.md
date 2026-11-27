@@ -8,8 +8,8 @@ Zwei Kamerabühnen und drei Werkstätten für Plakate, Geräusche und Fotografie
 
 | Bühne oder Werkstatt | Was du gestalten kannst |
 | --- | --- |
-| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=de) | Strecke den Zeigefinger zum Aufladen der Glutpeitsche und schleudere sie aus dem Handgelenk. Hebe zwei Finger für die Glaswehr oder öffne ein Portal zwischen deinen Handflächen. Maus, Touchscreen und Tastatur funktionieren ebenfalls. |
-| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=de) | Wähle eine Person im Foto und kalibriere deine Ruhehaltung. Steuere Blick, Mimik, Finger und sichtbare Gelenke. Untersuche die Proportionen und setze eigene Marken in Zeichnungen oder auf teilweise sichtbaren Händen. |
+| [Astral Atelier](https://oyoungsoo97-hub.github.io/night-studies/spell-stage/?lang=de) | Sammle Silberstaub in einer Hand, ziehe die Wolke zwischen deinen Händen auseinander und verstreue sie. Mit dem Zauberstab kannst du Glut gegen den Glasschild schleudern. |
+| [Portrait Loom](https://oyoungsoo97-hub.github.io/night-studies/portrait-stage/?lang=de) | Erzeuge aus deinem Foto eine texturierte 3D-Figur. Drehe sie, setze das Licht, spiele mit der Kamera und exportiere die aktuelle Pose als GLB-Modell. |
 | [Last Train](https://oyoungsoo97-hub.github.io/night-studies/last-train/?edition=house&lang=de) | Gestalte ein Filmplakat aus deinem Foto, einer Druckvorlage, einer Papierkante und einem Standbild des fahrenden Zugs. Exportiere es als PNG. |
 | [Foley Club](https://oyoungsoo97-hub.github.io/night-studies/foley-club/?edition=house&lang=de) | Vertone einen Film in zwei Takes. Bearbeite Einsatzzeit, Lautstärke und Stereoposition und exportiere die Tonspur als Stereo-WAV mit 48 kHz. Eigene MP4- und WebM-Clips dürfen bis zu 60 Sekunden lang und 12 MiB groß sein. |
 | [Light Table](https://oyoungsoo97-hub.github.io/night-studies/light-table/?edition=house&lang=de) | Importiere bis zu fünf Fotos. Wähle drei Ausschnitte und ihre Bildunterschriften, gestalte den Abzug und speichere ihn als PNG oder JPEG. |
@@ -18,7 +18,7 @@ Zwei Kamerabühnen und drei Werkstätten für Plakate, Geräusche und Fotografie
 
 Portrait Loom öffnet JPEG, PNG, WebP, GIF, BMP und AVIF. Für HEIC benötigt der Browser einen passenden Decoder. Bei animierten GIFs wird das erste Bild verwendet.
 
-Bei Gruppenfotos kannst du eine erkannte Person wählen oder einen Bereich um sie ziehen. Markiere Augen, Mundwinkel und sichtbare Fingerspitzen bei Bedarf von Hand. Die Gesichtsmaße beschreiben Proportionen im Bild. Bei der Darstellung bewegt sich die sichtbare Oberfläche des Fotos mit dir.
+Wähle eine Person im Gruppenfoto oder markiere bei einer Zeichnung Augen und Mund. Ziehe an der 3D-Figur oder drehe sie mit dem Regler. Wechsle das Licht, um Nase, Kinn und Finger im Profil zu sehen. Sichtbare Flächen erhalten die Textur des Fotos. Form und Material verdeckter Seiten werden aus diesem einen Blickwinkel geschätzt. **3D-Modell speichern** exportiert die aktuelle Pose mit Texturen als GLB. Mit **Projekt speichern** bleibt der Auftritt bearbeitbar.
 
 Beide Bühnen speichern PNGs und in Browsern mit Videoaufnahme bis zu zwölf Sekunden Film. Astral Atelier nimmt den sichtbaren Hintergrund mit auf. Schalte vor der Aufnahme den Zauberklang ein, um die synthetisierte Stereospur zu speichern. Für die Bewegungsverfolgung wird nur das Kamerabild verwendet.
 

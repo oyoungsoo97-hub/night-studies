@@ -55,7 +55,7 @@ export class Sky{
   if(landscape){const z=Math.max(W/landscape.width,H/landscape.height);c.drawImage(landscape,(W-landscape.width*z)/2,(H-landscape.height*z)*.49,landscape.width*z,landscape.height*z);}
   const v=c.createRadialGradient(W*.53,H*.51,H*.18,W*.51,H*.48,W*.70);v.addColorStop(0,'#09061900');v.addColorStop(1,'#0a061b7a');c.fillStyle=v;c.fillRect(0,0,W,H);
  }
- draw(target,scene,time,{video=null,cursors=[],bursts=[],draft=null,wand=null,flights=[],reduced=false}={}){
+ draw(target,scene,time,{video=null,cursors=[],bursts=[],draft=null,wand=null,flights=[],reduced=false,field=null}={}){
   const c=target.getContext('2d');c.save();c.setTransform(target.width/W,0,0,target.height/H,0,0);c.drawImage(this.background,0,0);
   if(video?.readyState>=2&&video.videoWidth){
    c.save();const z=Math.max(W/video.videoWidth,H/video.videoHeight),w=video.videoWidth*z,h=video.videoHeight*z;
@@ -71,11 +71,22 @@ export class Sky{
   if(fixed){
    const anchor=scene.marks[fixed-1];
    if(!this.cache||this.cache.anchor!==anchor||this.cache.first!==scene.marks[0]){
-     const layer=document.createElement('canvas');layer.width=W;layer.height=H;const ink=layer.getContext('2d');
-     for(let i=0;i<fixed;i++)this.mark(ink,scene.marks[i],1.7);
-     this.cache={anchor,first:scene.marks[0],layer};
+     // All these marks combine source-over shadow with screen light. At each pixel their
+     // composition is offset + transmission * background, independently for R, G and B.
+     // Render the two endpoints once so the cached effects work over *any* live video frame.
+     const transfer=this.cache||{offset:document.createElement('canvas'),transmission:document.createElement('canvas')};
+     for(const [surface,background] of [[transfer.offset,'#000'],[transfer.transmission,'#fff']]){
+      if(surface.width!==W||surface.height!==H){surface.width=W;surface.height=H;}
+      const ink=surface.getContext('2d');
+      ink.fillStyle=background;ink.fillRect(0,0,W,H);
+      for(let i=0;i<fixed;i++)this.mark(ink,scene.marks[i],1.7);
+     }
+     const gain=transfer.transmission.getContext('2d');
+     gain.save();gain.globalCompositeOperation='difference';gain.drawImage(transfer.offset,0,0);gain.restore();
+     this.cache={...transfer,anchor,first:scene.marks[0]};
    }
-   c.drawImage(this.cache.layer,0,0);
+   c.save();c.globalCompositeOperation='multiply';c.drawImage(this.cache.transmission,0,0);
+   c.globalCompositeOperation='lighter';c.drawImage(this.cache.offset,0,0);c.restore();
   }else this.cache=null;
   for(const mark of scene.marks.slice(fixed)){
    if(mark.type==='bolt'&&flights.some(f=>f.mark===mark))continue;
@@ -84,6 +95,7 @@ export class Sky{
   if(draft&&draft.type!=='bolt')this.mark(c,draft,t,true);
   for(const flight of flights){if(time<flight.start)continue;this.arcana.bolt(c,flight.mark,t,reduced?1:Math.min(1,(time-flight.start)/flight.duration),!reduced);}
   for(const burst of bursts){this.arcana.impact(c,burst,(time-burst.start)/1000);}
+  if(field)field.render(c,scene.color,scene.power,{reduced});
   if(wand)this.arcana.wand(c,wand,t);
   for(const pointer of cursors){
     const x=pointer.x*W,y=pointer.y*H,col=spectra[scene.color];

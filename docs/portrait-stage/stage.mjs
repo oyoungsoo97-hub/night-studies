@@ -1,17 +1,19 @@
 import {detectPortrait,startTracking} from '../tracking.mjs?v=188cd72e71';
-import {clamp,resting,faceSignal,relativePose,manualFace,handPoints,retargetHand,manualHand,makeRig,faceGeometry} from './rig.mjs?v=f4e39dc054';
-import {makeSurface,paperHand} from './surface.mjs?v=9af2600db1';
-import {tr} from './strings.mjs?v=5d8106cd05';
-import {makeBodyRig,bodyMotion} from './body.mjs?v=4bb25ddb0b';
-import {closeFace,faceRegion,faceBox,refinedFace,tracedHand,rigHands,smoothPose,smoothPoints} from './anatomy.mjs?v=2070598b2d';
+import {clamp,resting,faceSignal,relativePose,manualFace,handPoints,retargetHand,manualHand,faceGeometry} from './rig.mjs?v=bc3d730eb9';
+import {makeSurface} from './surface.mjs?v=38a6aead7f';
+import {tr} from './strings.mjs?v=fb4e2e0551';
+import {bodyMotion} from './body.mjs?v=42762d866d';
+import {closeFace,faceRegion,faceBox,refinedFace,tracedHand,rigHands,smoothPose,smoothPoints} from './anatomy.mjs?v=946a6ad1ea';
 import {gifHeader,bmpSize,heifHeader} from './containers.mjs?v=28916c7123';
 import {dimensions,fits} from './photo.mjs?v=a7fc521aa8';
-const $=id=>document.getElementById(id),canvas=$('portrait'),stage=$('dropzone'),video=$('video'),surface=makeSurface(canvas);
+const $=id=>document.getElementById(id),canvas=$('portrait'),stage=$('dropzone'),video=$('video'),surface=makeSurface(canvas,()=>{sync();paintSoon();});
 const sampleURL='../assets/portrait-model.webp',controlRanges={brow:[-100,100],blink:[0,100],jaw:[0,100],roll:[-100,100],yaw:[-100,100],hands:[0,100],smile:[0,100],pucker:[0,100],gazeX:[-100,100],gazeY:[-100,100],pitch:[-100,100],depth:[-100,100],leftBrow:[-100,100],rightBrow:[-100,100],leftLid:[0,100],rightLid:[0,100],leftSmile:[-100,100],rightSmile:[-100,100]};
 let source={type:'sample'},photo,aspect=1,rig,detected={face:null,hands:[]},anchors=[],pick=null,cursor,sourceStatus='',trackStatus='',generation=0,fileGeneration=0,analysis,loading=true;
 let cameraSession=null,samples=[],sampleStarted=0,baseline=null,live=resting(),neutralHands=new Map(),activeHands=[],presence={face:false,hands:0},lastFaceTime=0;
 let geometry=null,subjectRegion=null,subjectPoint=null,allFaces=[],handMarks=[],sourceHands=[],pickMode='',areaPointer=null;
 let recentFrame=0,liveBody=null,neutralBody=null,bodyTargets=null,lastBodyTime=0,trackedHands=new Map();
+const defaultView=()=>({yaw:0,pitch:0,zoom:1,light:0});
+let view=defaultView(),orbitPointer=null,exportPending=false;
 const pickPrompts={basic:['eyePick','chinPick'],face:['pickLeftEye','pickRightEye','pickLeftLip','pickRightLip','chinPick'],hand:['wrist','thumbTip','indexTip','middleTip','ringTip','littleTip'],area:['areaStart','areaEnd']};
 const firstControls=new Set(['brow','blink','jaw','roll','yaw','hands','smile']);
 let hold=null,raw=false,mesh=false,scheduled=0,notification='',notifyTimer,ready;
@@ -50,7 +52,13 @@ function sync(){
   $('channels').textContent=tr('face')+' '+(presence.face?'1':'0')+'  /  '+tr('hand')+' '+presence.hands+(rig?.body?.enabled?'  /  '+tr('body')+' '+(presence.body?'1':'0'):'');
   $('moving').setAttribute('aria-pressed',String(!raw));$('original').setAttribute('aria-pressed',String(raw));$('mesh').setAttribute('aria-pressed',String(mesh));
   $('portrait').setAttribute('aria-label',tr(raw?'originalStage':'animatedStage'));$('thumbnail').alt=tr('photoAlt');$('anchorBtn').disabled=loading||!!pick;$('cancelAnchor').hidden=!pick;$('useExample').hidden=source.type==='sample';$('download').disabled=!photo||loading||!!pick;canvas.toggleAttribute('data-picking',!!pick);
-  canvas.style.cursor=pick?'crosshair':'';if(notification)$('notice').textContent=tr(notification);
+  const model=surface.sculpture,modelVisible=!!model&&surface.available&&!pick&&!raw;
+  $('renderDesk').hidden=!modelVisible;$('glb').disabled=!model||loading||exportPending;$('glb').textContent=tr(exportPending?'baking':'glb');
+  $('orbit').value=view.yaw;$('orbitValue').value=Math.round(view.yaw)+'°';
+  $('zoom').value=Math.round(view.zoom*100);$('zoomValue').value=$('zoom').value+'%';$('light').value=String(view.light);
+  $('mesh').disabled=!model||!surface.available;$('moving').disabled=!!photo&&(!model||!surface.available);
+  $('modelStatus').textContent=!loading&&model&&!surface.available?tr('gpuUnavailable'):model&&!loading?model.count.toLocaleString(window.NightI18n?.lang||'en')+' '+tr('triangles'):'';
+  canvas.style.cursor=pick?'crosshair':modelVisible?'grab':'';if(notification)$('notice').textContent=tr(notification);
 }
 function localize(){document.querySelectorAll('[data-msg]').forEach(el=>el.textContent=tr(el.dataset.msg));document.querySelector('meta[name=description]').content=tr('intro');renderPeople();sync();}
 document.addEventListener('night-language',localize);localize();
@@ -71,7 +79,7 @@ function poseForFrame(){
     const ratio=Math.min(1/Math.max(.01,h.videoAspect),aspect/h.videoAspect,1.1);
     puppets[side]=h.points.map(p=>({x:clamp(1-p.x,.02,.98),y:aspect*.50+(p.y-h.videoAspect*.50)*ratio}));
   }
-  if(vals.hands)for(let side=0;side<2;side++)if(!occupied.has(side))puppets[side]=paperHand(side,vals.hands/100,aspect);
+  pose.hands=vals.hands/100;
   return {pose,targets,puppets,body:bodyTargets};
 }
 function fit(){if(!photo)return;const rect=stage.getBoundingClientRect(),s=getComputedStyle(stage),availW=rect.width-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight),availH=rect.height-parseFloat(s.paddingTop)-parseFloat(s.paddingBottom);
@@ -79,13 +87,14 @@ function fit(){if(!photo)return;const rect=stage.getBoundingClientRect(),s=getCo
   const frame=canvas.parentElement;frame.style.width=width+'px';frame.style.height=height+'px';paintSoon();}
 function paint(exporting=false){if(!photo||!rig)return;const bounds=canvas.getBoundingClientRect(),factor=Math.min(1,1800/Math.max(photo.naturalWidth,photo.naturalHeight));
   const scale=exporting?photo.naturalWidth*factor:Math.min(1280,Math.max(2,bounds.width)*Math.min(devicePixelRatio||1,1.7));
-  surface.draw({...(pick?{pose:resting(),targets:[],puppets:[]}:poseForFrame()),raw:pick?false:raw,markers:!exporting&&mesh&&!raw,rulers:!exporting&&mesh&&geometry?geometry.lines:[],area:!exporting&&pickMode==='area'&&pick?.length&&cursor?normalizedRect(pick[0],cursor):null,anchors:!exporting&&pick?[...pick,cursor].filter(Boolean):[]},Math.max(1,Math.round(scale)),Math.max(1,Math.round(scale*aspect)));}
+  surface.draw({...(pick?{pose:resting(),targets:[],puppets:[]}:poseForFrame()),view,raw:!!pick||raw,markers:!exporting&&mesh&&!raw,rulers:!exporting&&mesh&&geometry?geometry.lines:[],area:!exporting&&pickMode==='area'&&pick?.length&&cursor?normalizedRect(pick[0],cursor):null,anchors:!exporting&&pick?[...pick,cursor].filter(Boolean):[]},Math.max(1,Math.round(scale)),Math.max(1,Math.round(scale*aspect)));}
 function paintSoon(){if(!scheduled)scheduled=requestAnimationFrame(()=>{scheduled=0;paint();});}
 new ResizeObserver(fit).observe(stage);
 function applyRig(){
   const face=anchors.length?refinedFace(anchors,aspect,manualFace):detected.face;sourceHands=rigHands(detected.hands,handMarks,aspect);
-  geometry=faceGeometry(face,aspect);rig=makeRig(face,sourceHands,aspect,detected.pose?.mask,detected.pose);rig.joints=detected.pose?.landmarks||null;rig.body=makeBodyRig(detected.pose,aspect,rig.source,{hands:sourceHands,face});
-  surface.set(photo,rig);hold=null;bodyTargets=null;fit();sync();
+  geometry=faceGeometry(face,aspect);
+  rig={palms:sourceHands.map(h=>handPoints(h,aspect)),body:{enabled:!!detected.pose?.landmarks?.length}};
+  surface.set(photo,{aspect,face,hands:sourceHands,pose:detected.pose});hold=null;bodyTargets=null;fit();sync();
 }
 function renderPeople(){const bin=$('people');bin.replaceChildren();bin.hidden=allFaces.length<2;if(bin.hidden||!photo)return;
   allFaces.forEach((face,i)=>{const box=faceBox(face),button=document.createElement('button'),thumb=document.createElement('canvas');thumb.width=thumb.height=60;
@@ -98,7 +107,7 @@ async function analyze(img,signal,region,point){const result=await detectPortrai
   const face=point?closeFace(faces,point):result.face;return {...result,face,hands:(result.hands||[]).filter(h=>h.landmarks?.length===21).slice(0,2)};
 }
 async function scan(region,point=null){if(!photo||loading)return;const token=++generation;analysis?.abort();analysis=new AbortController();const signal=analysis.signal;loading=true;pick=null;sourceStatus='analyzing';sync();renderPeople();
-  try{const result=await analyze(photo,signal,region,point);if(token!==generation)return;subjectRegion=region;subjectPoint=point||result.face?.landmarks[1]||null;detected=result;anchors=[];handMarks=[];sourceStatus=result.face?'':'noFace';loading=false;applyRig();clearCalibration();}
+  try{const result=await analyze(photo,signal,region,point);if(token!==generation)return;subjectRegion=region;subjectPoint=point||result.face?.landmarks[1]||null;detected=result;anchors=[];handMarks=[];sourceStatus=result.face?'':result.pose?'poseHead':'noFace';loading=false;applyRig();clearCalibration();}
   catch{if(signal.aborted||token!==generation)return;loading=false;sourceStatus='modelError';}sync();renderPeople();paintSoon();}
 function decode(url){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error(tr('badImage')));img.src=url;});}
 function checkPhoto(img){if(!fits(img.naturalWidth,img.naturalHeight))throw Error(tr('dimensions'));}
@@ -112,17 +121,49 @@ async function openSource(src,marks=[],savedControls={},savedGain=100,held=null,
   const token=++generation;analysis?.abort();analysis=new AbortController();const signal=analysis.signal;
   loading=true;sourceStatus='analyzing';pick=null;sync();
   try{const img=await decode(src.type==='sample'?sampleURL:src.data);checkPhoto(img);if(token!==generation)return;
-    source=src;savedBaseline=null;photo=img;aspect=img.naturalHeight/img.naturalWidth;anchors=marks;allFaces=[];subjectRegion=targeting.region||null;subjectPoint=targeting.point||null;handMarks=targeting.hands||[];detected={face:null,hands:[]};raw=false;hold=null;mesh=false;$('thumbnail').src=img.src;
+    source=src;view=defaultView();savedBaseline=null;photo=img;aspect=img.naturalHeight/img.naturalWidth;anchors=marks;allFaces=[];subjectRegion=targeting.region||null;subjectPoint=targeting.point||null;handMarks=targeting.hands||[];detected={face:null,hands:[]};raw=false;hold=null;mesh=false;$('thumbnail').src=img.src;
     applyControls(savedControls);$('gain').value=savedGain;$('gain').nextElementSibling.value=savedGain+'%';applyRig();paint();
     let modelError=false,result;try{result=await analyze(img,signal,subjectRegion,subjectPoint);}catch(err){if(signal.aborted)return;modelError=true;}
     if(token!==generation)return;detected=result||{face:null,hands:[]};detected.hands=detected.hands.filter(h=>h.landmarks?.length===21).slice(0,2).sort((a,b)=>a.landmarks[0].x-b.landmarks[0].x);
-    loading=false;sourceStatus=marks.length?'anchored':detected.face?'':modelError?'modelError':'noFace';applyRig();if(held)hold=held;clearCalibration();sync();renderPeople();paintSoon();
+    loading=false;sourceStatus=marks.length?'anchored':detected.face?'':detected.pose?'poseHead':modelError?'modelError':'noFace';applyRig();if(held)hold=held;clearCalibration();sync();renderPeople();paintSoon();
   }catch(err){if(token===generation){loading=false;sourceStatus='badImage';sync();}throw err;}
 }
 async function handleFile(file){if(!file)return;const id=++fileGeneration;try{const src=await sourceFromFile(file);if(id===fileGeneration)await openSource(src);}catch(err){if(id===fileGeneration){sourceStatus=['invalidFile','badImage','dimensions'].find(key=>tr(key)===err.message)||'badImage';sync();}}}
 $('upload').onclick=()=>$('photoFile').click();$('photoFile').onchange=()=>{const file=$('photoFile').files[0];$('photoFile').value='';handleFile(file);};$('useExample').onclick=()=>openSource({type:'sample'}).catch(()=>{});
 stage.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('Files')){e.preventDefault();stage.classList.add('drag');}});stage.addEventListener('dragleave',e=>{if(!stage.contains(e.relatedTarget))stage.classList.remove('drag');});stage.addEventListener('drop',e=>{e.preventDefault();stage.classList.remove('drag');handleFile(e.dataTransfer.files[0]);});
 $('moving').onclick=()=>{raw=false;sync();paintSoon();};$('original').onclick=()=>{raw=true;sync();paintSoon();};$('mesh').onclick=()=>{mesh=!mesh;raw=false;sync();paintSoon();};
+function updateView(changes){Object.assign(view,changes);sync();paintSoon();}
+$('orbit').oninput=e=>updateView({yaw:Number(e.target.value)});
+$('zoom').oninput=e=>updateView({zoom:Number(e.target.value)/100});
+$('light').onchange=e=>updateView({light:Number(e.target.value)});
+$('homeView').onclick=()=>updateView(defaultView());
+const wrapDegrees=v=>((v+180)%360+360)%360-180;
+canvas.addEventListener('pointerdown',e=>{
+  if(pick||raw||!surface.sculpture||!surface.available||e.button!==0)return;
+  orbitPointer={id:e.pointerId,x:e.clientX,y:e.clientY,yaw:view.yaw,pitch:view.pitch};
+  e.preventDefault();canvas.focus({preventScroll:true});canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';
+});
+canvas.addEventListener('pointermove',e=>{
+  if(!orbitPointer||orbitPointer.id!==e.pointerId)return;
+  const speed=155/Math.max(180,canvas.getBoundingClientRect().width);
+  updateView({yaw:wrapDegrees(orbitPointer.yaw+(e.clientX-orbitPointer.x)*speed),pitch:clamp(orbitPointer.pitch+(e.clientY-orbitPointer.y)*speed,-65,65)});canvas.style.cursor='grabbing';
+});
+for(const evt of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(evt,e=>{if(orbitPointer?.id===e.pointerId){orbitPointer=null;canvas.style.cursor='grab';}});
+canvas.addEventListener('keydown',e=>{
+  if(pick||raw||!surface.sculpture)return;
+  const dir={ArrowRight:[8,0],ArrowLeft:[-8,0],ArrowDown:[0,6],ArrowUp:[0,-6]}[e.key];
+  if(dir){e.preventDefault();updateView({yaw:wrapDegrees(view.yaw+dir[0]),pitch:clamp(view.pitch+dir[1],-65,65)});}
+  else if(e.key==='Home'){e.preventDefault();updateView(defaultView());}
+});
+$('glb').onclick=async()=>{
+  if(loading||!rig||!surface.sculpture||exportPending)return;
+  exportPending=true;sync();const instance=surface.sculpture;const frame=structuredClone(poseForFrame());
+  const name=source.type==='sample'?tr('sampleName'):source.name;
+  try{const {exportSculpture}=await import('./export3d.mjs?v=51a56742b9');instance.update(frame);
+    const blob=await exportSculpture(instance),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=name.slice(0,70)+' — Portrait Loom.glb';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);flash('glbDone');
+  }catch{flash('glbError');}finally{exportPending=false;sync();paintSoon();}
+};
 function startPicking(mode){pickMode=mode;pick=[];cursor={x:.5,y:.4};areaPointer=null;raw=false;canvas.focus({preventScroll:true});canvas.scrollIntoView({block:'nearest'});sync();renderPeople();paintSoon();}
 function cancelPicking(){pick=null;pickMode='';cursor=null;areaPointer=null;sync();renderPeople();paintSoon();}
 $('areaBtn').onclick=()=>startPicking('area');$('clearArea').onclick=()=>scan(null);$('anchorBtn').onclick=()=>startPicking('basic');$('detailFace').onclick=()=>startPicking('face');$('traceHand').onclick=()=>startPicking('hand');$('cancelAnchor').onclick=cancelPicking;$('hudCancel').onclick=cancelPicking;
@@ -154,7 +195,7 @@ function bindHands(input,videoAspect,time){
   for(const [key,last] of trackedHands){if(used.has(key))continue;const age=time-last.seen;
     if(age>850){trackedHands.delete(key);neutralHands.delete(key);continue;}if(age>650||claimed.has(last.source)||results.length>=2)continue;
     const alpha=Math.exp(-Math.max(0,age-125)/160),origin=neutralHands.get(key);if(!origin)continue;
-    const points=last.points.map((p,i)=>({x:origin[i].x+(p.x-origin[i].x)*alpha,y:origin[i].y+(p.y-origin[i].y)*alpha+(last.source<0?(1-alpha)*videoAspect:0)}));results.push({...last,points});}
+    const points=last.points.map((p,i)=>({z:(origin[i].z||0)+((p.z||0)-(origin[i].z||0))*alpha,x:origin[i].x+(p.x-origin[i].x)*alpha,y:origin[i].y+(p.y-origin[i].y)*alpha+(last.source<0?(1-alpha)*videoAspect:0)}));results.push({...last,points});}
   return results;
 }
 function onFrame(frame){if(!cameraSession||!rig)return;
@@ -169,7 +210,7 @@ function onFrame(frame){if(!cameraSession||!rig)return;
   if(rig.body?.enabled){
     if(frame.pose?.landmarks?.length===33){lastBodyTime=time;liveBody=frame.pose.landmarks;if(!neutralBody)neutralBody=liveBody.map(p=>({...p}));
       const next=bodyMotion(detected.pose,liveBody,neutralBody,gain*Number($('bodyGain').value)/100,aspect,videoAspect);bodyTargets=next?smoothPoints(bodyTargets,next,dt):null;}
-    else if(bodyTargets&&time-lastBodyTime>220){bodyTargets=smoothPoints(bodyTargets,detected.pose.landmarks,dt*.28);if(time-lastBodyTime>850)bodyTargets=null;}}
+    else if(bodyTargets&&time-lastBodyTime>220){bodyTargets=smoothPoints(bodyTargets,detected.pose.landmarks.map(p=>({x:p.x,y:p.y,dz:0})),dt*.28);if(time-lastBodyTime>850)bodyTargets=null;}}
   if(prevFace!==presence.face||prevHands!==presence.hands||prevBody!==presence.body||prevState!==trackStatus)sync();if(!hold)paintSoon();
 }
 function endSession(code='ended'){cameraSession=null;activeHands=[];bodyTargets=null;live=resting();presence={face:false,hands:0};trackStatus=code;sync();paintSoon();}
@@ -189,11 +230,11 @@ $('download').onclick=()=>{
 function preview(){if(!rig)return '';const c=document.createElement('canvas');c.width=216;c.height=162;const ctx=c.getContext('2d');ctx.fillStyle='#332434';ctx.fillRect(0,0,c.width,c.height);const k=Math.min(c.width/canvas.width,c.height/canvas.height);ctx.drawImage(canvas,(c.width-canvas.width*k)/2,(c.height-canvas.height*k)/2,canvas.width*k,canvas.height*k);return c.toDataURL('image/jpeg',.65);}
 function validPoint(p,bound=1){return p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=1&&p.y>=0&&p.y<=bound;}
 function parseHeld(value){if(value==null)return null;const err=()=>{throw Error(tr('badProject'));};if(!value.pose||!Array.isArray(value.targets)||value.targets.length>2||!Array.isArray(value.puppets)||value.puppets.length>2)err();const pose={};for(const k of Object.keys(resting())){const n=value.pose[k]??0;if(!Number.isFinite(n)||Math.abs(n)>1.05)err();pose[k]=n;}
-  const hand=row=>row==null?null:Array.isArray(row)&&row.length===21&&row.every(p=>Number.isFinite(p?.x)&&Number.isFinite(p?.y)&&Math.abs(p.x)<5&&Math.abs(p.y)<12)?row.map(({x,y})=>({x,y})):err();const body=value.body??null;if(body&&(!Array.isArray(body)||body.length!==33||!body.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=-4&&p.x<=5&&p.y>=-4&&p.y<=5)))err();return {pose,targets:value.targets.map(hand),puppets:value.puppets.map(hand),body};}
+  const hand=row=>row==null?null:Array.isArray(row)&&row.length===21&&row.every(p=>Number.isFinite(p?.x)&&Number.isFinite(p?.y)&&Math.abs(p.x)<5&&Math.abs(p.y)<12)?row.map(({x,y,dz})=>({x,y,dz:Number.isFinite(dz)?clamp(dz,-2,2):0})):err();const body=value.body??null;if(body&&(!Array.isArray(body)||body.length!==33||!body.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=-4&&p.x<=5&&p.y>=-4&&p.y<=5&&(p.dz===undefined||Number.isFinite(p.dz)&&Math.abs(p.dz)<=2))))err();return {pose,targets:value.targets.map(hand),puppets:value.puppets.map(hand),body};}
 const signalKeys=['browL','browR','blinkL','blinkR','jaw','roll','yaw','pitch'];
 function parsedBaseline(value){if(!value)return null;const b={};for(const key of [...signalKeys,'gazeX','gazeY','smileL','smileR','pucker','depth']){if(value[key]===undefined&&!signalKeys.includes(key))continue;if(!Number.isFinite(value[key])||Math.abs(value[key])>7)throw Error(tr('badProject'));b[key]=value[key];}return b;}
 let savedBaseline=null;
-async function restore(saved){await ready;const fail=()=>{throw Error(tr('badProject'));};if(!saved||![1,2].includes(saved.version)||!saved.source||typeof saved.manual!=='object'||!saved.manual)fail();const src=saved.source;
+async function restore(saved){await ready;const fail=()=>{throw Error(tr('badProject'));};if(!saved||![1,2,3].includes(saved.version)||!saved.source||typeof saved.manual!=='object'||!saved.manual)fail();const src=saved.source;
   if(src.type!=='sample'&&(src.type!=='custom'||typeof src.name!=='string'||!src.name.trim()||src.name.length>80||typeof src.data!=='string'||src.data.length>9000000||!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/u.test(src.data)))fail();
   if(src.type==='custom'){let size;try{size=dimensions(Uint8Array.from(atob(src.data.slice(23)),c=>c.charCodeAt(0)));}catch{fail();}if(!size||!fits(size[0],size[1],1800))fail();}
   for(const [k,[min,max]] of Object.entries(controlRanges)){const n=saved.manual[k]??0;if(!Number.isFinite(n)||n<min||n>max)fail();}
@@ -203,9 +244,12 @@ async function restore(saved){await ready;const fail=()=>{throw Error(tr('badPro
   if(person&&!validPoint(person))fail();if(!Array.isArray(traces)||traces.length>2||!traces.every(row=>Array.isArray(row)&&row.length===6&&row[0]&&row.slice(1).some(Boolean)&&row.every(p=>p===null||validPoint(p))))fail();
   const bodyGain=saved.bodyGain??80;if(!Number.isFinite(bodyGain)||bodyGain<0||bodyGain>125)fail();
   if([saved.raw,saved.mesh].some(v=>v!==undefined&&typeof v!=='boolean'))fail();
+  const restoredView=saved.view||defaultView();
+  for(const [key,low,high] of [['yaw',-180,180],['pitch',-65,65],['zoom',.65,1.65],['light',0,2]])if(!Number.isFinite(restoredView[key])||restoredView[key]<low||restoredView[key]>high)fail();
+  if(!Number.isInteger(restoredView.light))fail();
   const freeze=parseHeld(saved.held),neutral=parsedBaseline(saved.neutral);const candidate=await decode(src.type==='sample'?sampleURL:src.data);checkPhoto(candidate);if(marks.length){try{refinedFace(marks,candidate.naturalHeight/candidate.naturalWidth,manualFace);}catch{fail();}}
   try{for(const trace of traces)tracedHand(trace,candidate.naturalHeight/candidate.naturalWidth);}catch{fail();}
-  if(cameraSession){const old=cameraSession;cameraSession=null;old.abort();endSession();}await openSource(src.type==='sample'?{type:'sample'}:{type:'custom',name:src.name,data:src.data},marks,saved.manual,level,freeze,target);$('bodyGain').value=bodyGain;$('bodyGain').nextElementSibling.value=bodyGain+'%';savedBaseline=neutral;mesh=!!saved.mesh;raw=!!saved.raw;sync();paintSoon();
+  if(cameraSession){const old=cameraSession;cameraSession=null;old.abort();endSession();}await openSource(src.type==='sample'?{type:'sample'}:{type:'custom',name:src.name,data:src.data},marks,saved.manual,level,freeze,target);$('bodyGain').value=bodyGain;$('bodyGain').nextElementSibling.value=bodyGain+'%';savedBaseline=neutral;view={...restoredView};mesh=!!saved.mesh;raw=!!saved.raw;sync();paintSoon();
 }
 ready=openSource({type:'sample'}).catch(()=>{});
-window.NightLibrary?.register({getState:async()=>{await ready;if(loading||!photo)throw Error(tr('busy'));return {version:2,source:{...source},anchors,targeting:{region:subjectRegion,point:subjectPoint?{x:subjectPoint.x,y:subjectPoint.y}:null,hands:handMarks},bodyGain:Number($('bodyGain').value),manual:allControls(),gain:Number($('gain').value),raw,mesh,held:hold?structuredClone(hold):null,neutral:baseline||savedBaseline};},restore,getTitle:()=>source.type==='sample'?tr('sampleName'):source.name,getPreview:preview});
+window.NightLibrary?.register({getState:async()=>{await ready;if(loading||!photo)throw Error(tr('busy'));return {version:3,view:{...view},source:{...source},anchors,targeting:{region:subjectRegion,point:subjectPoint?{x:subjectPoint.x,y:subjectPoint.y}:null,hands:handMarks},bodyGain:Number($('bodyGain').value),manual:allControls(),gain:Number($('gain').value),raw,mesh,held:hold?structuredClone(hold):null,neutral:baseline||savedBaseline};},restore,getTitle:()=>source.type==='sample'?tr('sampleName'):source.name,getPreview:preview});

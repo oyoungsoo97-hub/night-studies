@@ -36,7 +36,11 @@ export function bodyMotion(sourcePose,livePose,neutralPose,strength,sourceAspect
     const stretch=1+(ratio-1)*Math.min(gain,1);
     out[j]={x:out[a].x+d.x*stretch,y:out[a].y+d.y*stretch};
   }
-  return out.map(p=>({x:clip(p.x,-4,5),y:clip(p.y/sourceAspect,-4,5)}));
+  const range=dist(s[11],s[12])*.68;
+  return out.map((p,i)=>{
+    const delta=visible(C[i])&&visible(B[i])&&Number.isFinite(B[i].z-C[i].z)?(B[i].z-C[i].z)*sc*gain:0;
+    return {x:clip(p.x,-4,5),y:clip(p.y/sourceAspect,-4,5),dz:clip(delta,-range,range)};
+  });
 }
 export function makeBodyRig(pose,aspect,source,{hands=[]}={}){
   const l=skeleton(pose);
