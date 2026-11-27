@@ -114,7 +114,7 @@ window.FoleySound = (() => {
   }
   async function exportWav(events,seconds=8) {
     const Offline=window.OfflineAudioContext||window.webkitOfflineAudioContext;
-    if(!Offline)throw new Error('이 브라우저는 WAV 렌더링을 지원하지 않습니다.');
+    if(!Offline)throw new Error(NightStudio.text('이 브라우저는 WAV 렌더링을 지원하지 않습니다.'));
     const sampleRate=48000,frameCount=Math.round(seconds*sampleRate);
     const ctx=new Offline(2,frameCount,sampleRate),bus=createMix(ctx);
     events.forEach(e=>schedule(ctx,bus,e,e.t));

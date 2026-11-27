@@ -1,7 +1,7 @@
 'use strict';
 window.FoleyMedia=(()=>{
   const maxBytes=12*1024*1024, maxSeconds=60, types=['video/mp4','video/webm'];
-  const fail=text=>new Error(text);
+  const fail=text=>new Error(NightStudio.text(text));
   function read(file){
     return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(fail('영상 파일을 읽을 수 없습니다.'));reader.readAsDataURL(file);});
   }
@@ -46,7 +46,7 @@ window.FoleyMedia=(()=>{
       const duration=await metadata(video,url);
       if(!video.videoWidth||!video.videoHeight)throw fail('영상 트랙을 찾을 수 없습니다.');
       video.currentTime=0;
-      return {video,url,duration,asset:{name:name.trim().slice(0,160)||'내 영상',type,data:data||await read(blob)}};
+      return {video,url,duration,asset:{name:name.trim().slice(0,160)||NightStudio.text('내 영상'),type,data:data||await read(blob)}};
     }catch(e){dispose({video,url});throw e;}
   }
   function dispose(media){if(!media)return;media.video.pause();media.video.removeAttribute('src');media.video.load();URL.revokeObjectURL(media.url);}

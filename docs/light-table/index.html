@@ -7,15 +7,16 @@
   <meta name="description" content="내 사진에서 세 컷을 고르고 순서, 캡션, 인화지와 레이아웃을 편집하는 개인 사진 작업대.">
   <title>Light Table · Night Studies</title>
   <link rel="icon" href="../mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="table.css?v=aa6cdda67d">
-  <script src="../library.js?v=04d6f1647b" defer></script>
-  <script src="table.js?v=cd4aea46c8" defer></script>
+  <link rel="stylesheet" href="table.css?v=025bf2ad4f">
+  <script src="../i18n.js?v=e4aa568ccb"></script><script src="../common-locales.js?v=770c93482a"></script><script src="../studio-locales.js?v=d217893ea4"></script>
+  <script src="../library.js?v=e522b8cf6c" defer></script>
+  <script src="table.js?v=bdd450f717" defer></script>
 </head>
 <body>
   <main class="workbench">
     <nav class="site-bar" aria-label="작품과 프로젝트">
       <a href="../index.html" class="home"><span class="aperture" aria-hidden="true"></span>Night Studies</a>
-      <div class="project-actions"><button type="button" data-library>작업 보관함</button><button type="button" data-save-project>프로젝트 저장</button></div>
+      <div class="project-actions"><span data-language-picker></span><button type="button" data-library>작업 보관함</button><button type="button" data-save-project>프로젝트 저장</button></div>
     </nav>
     <header class="intro">
       <h1 lang="en">Light <i>Table</i></h1>
@@ -36,7 +37,7 @@
     </section>
     <div class="desk-grid">
       <section class="film-bed" aria-label="확대할 사진 원판">
-        <div class="rail upper-rail"><span id="sourceName">비 오는 밤의 식당</span><span id="resolution">불러오는 중</span></div>
+        <div class="rail upper-rail"><span data-no-i18n id="sourceName">비 오는 밤의 식당</span><span id="resolution">불러오는 중</span></div>
         <div class="photo-mat"><div class="stage" id="stage" tabindex="0" role="group" aria-label="사진 위의 자르기 위치" aria-describedby="stageHelp">
           <img id="sourcePhoto" src="../assets/diner.jpg" alt="비 내리는 밤, 유리창 안팎의 풍경이 겹치는 식당" draggable="false">
           <canvas id="overlay" aria-hidden="true"></canvas>

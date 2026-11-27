@@ -4,34 +4,43 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f4f2e9">
-<meta name="description" content="영화 포스터, 폴리 사운드트랙, 세 컷의 사진을 만드는 브라우저 편집실. 프로젝트를 보관하고 PNG와 WAV로 내보내세요.">
+<meta name="description" content="카메라로 빛을 지휘하고 사진 속 인물을 움직이는 두 무대. 포스터, 사운드트랙, 사진을 위한 세 편집실.">
 <title>Night Studies — After Hours 편집실</title>
 <link rel="icon" href="./mark.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./gallery.css?v=92c7a731b6">
-<script defer src="./library.js?v=04d6f1647b"></script>
-<script defer src="./gallery.js?v=91ca914a79"></script>
+<link rel="stylesheet" href="./gallery.css?v=c949376de5">
+<script src="./i18n.js?v=e4aa568ccb"></script>
+<script src="./common-locales.js?v=770c93482a"></script>
+<script defer src="./library.js?v=e522b8cf6c"></script>
+<script defer src="./gallery.js?v=8ea4f9fb00"></script>
 </head>
 <body>
 <a class="skip" href="#studios">편집실로 이동</a>
 <header class="mast"><div class="shell">
   <a class="brand" href="./"><img src="./mark.svg" width="36" height="36" alt="">Night Studies</a>
-  <nav aria-label="주 메뉴"><a href="#studios">편집실</a><button type="button" data-library><span class="shelf-icon" aria-hidden="true"></span>작업 보관함</button></nav>
+  <nav aria-label="주 메뉴"><a href="#stages">카메라 무대</a><a href="#studios">편집실</a><span data-language-picker></span><button type="button" data-library><span class="shelf-icon" aria-hidden="true"></span>작업 보관함</button></nav>
 </div></header>
 <main class="shell">
-  <div class="headline"><h1>After <em>Hours.</em></h1><p>한밤의 장면으로 만드는<br><strong>포스터, 사운드트랙, 사진집.</strong></p></div>
+  <div class="headline"><h1>After <em>Hours.</em></h1><p>손끝으로 무대를 열고<br><strong>사진 속 인물에 움직임을 입히세요.</strong></p></div>
+  <section id="stages" class="live-stages" aria-labelledby="stages-title">
+    <div class="stages-head"><h2 id="stages-title">카메라 무대</h2><p>카메라 영상과 사진은 기기에서 처리됩니다.</p></div>
+    <div class="stage-shelf">
+      <a class="stage-link" href="spell-stage/"><div class="stage-art"><img src="assets/astral-cover.webp" alt="손동작으로 이은 별빛과 두 손 사이에 열린 차원문"></div><div class="stage-details"><div><h3 lang="en" translate="no">Astral Atelier</h3><p>손끝으로 별을 잇고, 두 손으로 빛의 문을 엽니다.</p></div><span>마법 무대 열기</span></div></a>
+      <a class="stage-link" href="portrait-stage/"><div class="stage-art"><img src="assets/loom-cover.webp" alt="사진 속 인물의 얼굴과 손에 겹쳐진 움직임 기준점"></div><div class="stage-details"><div><h3 lang="en" translate="no">Portrait Loom</h3><p>인물 사진을 골라 내 표정과 손가락으로 움직입니다.</p></div><span>인물 무대 열기</span></div></a>
+    </div>
+  </section>
   <section class="desk" id="studios" aria-label="편집실과 하우스 에디션">
     <div class="selector">
       <h2>편집실 선택</h2>
       <div role="tablist" aria-label="편집실 선택" class="tabs">
-        <button type="button" aria-selected="true" tabindex="0" role="tab" aria-controls="edition" id="tab-train" data-studio="last-train"><i class="swatch sw-train"></i><span><b lang="en">Last Train</b><small>영화 포스터 편집실</small></span><span class="tab-dot" aria-hidden="true"></span></button>
-        <button type="button" aria-selected="false" tabindex="-1" role="tab" aria-controls="edition" id="tab-foley" data-studio="foley-club"><i class="swatch sw-foley"></i><span><b lang="en">Foley Club</b><small>효과음 편집실</small></span><span class="tab-dot" aria-hidden="true"></span></button>
-        <button type="button" aria-selected="false" tabindex="-1" role="tab" aria-controls="edition" id="tab-light" data-studio="light-table"><i class="swatch sw-light"></i><span><b lang="en">Light Table</b><small>사진 시퀀스 편집실</small></span><span class="tab-dot" aria-hidden="true"></span></button>
+        <button type="button" aria-selected="true" tabindex="0" role="tab" aria-controls="edition" id="tab-train" data-studio="last-train"><i class="swatch sw-train"></i><span><b lang="en" translate="no">Last Train</b><small>영화 포스터 편집실</small></span><span class="tab-dot" aria-hidden="true"></span></button>
+        <button type="button" aria-selected="false" tabindex="-1" role="tab" aria-controls="edition" id="tab-foley" data-studio="foley-club"><i class="swatch sw-foley"></i><span><b lang="en" translate="no">Foley Club</b><small>효과음 편집실</small></span><span class="tab-dot" aria-hidden="true"></span></button>
+        <button type="button" aria-selected="false" tabindex="-1" role="tab" aria-controls="edition" id="tab-light" data-studio="light-table"><i class="swatch sw-light"></i><span><b lang="en" translate="no">Light Table</b><small>사진 시퀀스 편집실</small></span><span class="tab-dot" aria-hidden="true"></span></button>
       </div>
       <a class="blank-link" id="start-blank" href="last-train/">막차 편집실 바로 열기</a>
     </div>
     <article id="edition" class="edition" role="tabpanel" aria-labelledby="tab-train" data-current="last-train">
       <div class="mount" id="edition-art"><img id="edition-preview" src="assets/edition-train.webp" alt="마지막 안내방송 포스터 편집본" fetchpriority="high"></div>
-      <div class="edition-caption"><div><span class="edition-label" lang="en">House edition</span><h2 id="edition-name">마지막 안내방송</h2><p id="edition-copy">종이 사이로 드러난 승강장. 열차가 지나갈 한 프레임을 골라 포스터로 인쇄하세요.</p></div>
+      <div class="edition-caption"><div><span class="edition-label">하우스 에디션</span><h2 id="edition-name">마지막 안내방송</h2><p id="edition-copy">종이 사이로 드러난 승강장. 열차가 지나갈 한 프레임을 골라 포스터로 인쇄하세요.</p></div>
       <a class="start" id="start-edition" href="last-train/?edition=house">포스터 편집하기</a></div>
     </article>
   </section>
@@ -39,8 +48,8 @@
     <div class="shelf-head"><h2 id="recent-heading">최근 작업</h2><button type="button" data-library>보관함 열기</button></div>
     <div id="recent" aria-live="polite"></div>
   </section>
-  <noscript><div class="noscript">편집하려면 JavaScript를 켜 주세요. <a href="last-train/">막차</a> · <a href="foley-club/">폴리 클럽</a> · <a href="light-table/">라이트 테이블</a></div></noscript>
+  <noscript><div class="noscript">JavaScript를 켜 주세요. Enable JavaScript. Bitte JavaScript aktivieren. <a href="last-train/">막차</a> · <a href="foley-club/">폴리 클럽</a> · <a href="light-table/">라이트 테이블</a></div></noscript>
 </main>
-<footer class="shell"><span>Night Studies <i>by Youngsoo Oh</i></span><a href="https://github.com/oyoungsoo97-hub/night-studies">GitHub 소스</a></footer>
+<footer class="shell"><span>Night Studies <i>Youngsoo Oh</i></span><a href="https://github.com/oyoungsoo97-hub/night-studies">GitHub 소스</a></footer>
 </body>
 </html>

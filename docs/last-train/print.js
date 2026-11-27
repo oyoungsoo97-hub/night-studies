@@ -71,20 +71,20 @@ window.TrainPrint = (() => {
     if(design.stock==='blueprint')blueprint(c,w,h);
     else if(design.stock==='letterpress')letterpress(c,w,h);
     else tramPrint(c,w,h,poster);
-    const stock=design.stock, title=design.title.trim() || 'LAST TRAIN', sub=design.subtitle.trim();
+    const stock=design.stock, title=design.title.trim() || NightStudio.text('막차'), sub=design.subtitle.trim();
     const m=w*.05;
     if(stock==='vermilion'){
       text(c,'23:59',w-m,h*.167,h*.128,w*.31,'#f4ddb0','display',650,'right');
       text(c,title,m,h*.904,h*.147,w-2*m,'#1c2730','display',700);
       text(c,sub,m,h*.958,h*.034,w*.60,'#293029','text',600);
-      text(c,'NIGHT SERVICE',w-m,h*.958,h*.032,w*.25,'#293029','mono',650,'right');
+      text(c,NightStudio.text('야간 운행'),w-m,h*.958,h*.032,w*.25,'#293029','mono',650,'right');
     } else if(stock==='blueprint'){
-      text(c,'NIGHT LINE',m,h*.103,h*.047,w*.5,'#c3d4c5','mono',500);
+      text(c,NightStudio.text('야간 노선'),m,h*.103,h*.047,w*.5,'#c3d4c5','mono',500);
       text(c,'23:59',w-m,h*.10,h*.053,w*.3,'#e9d594','mono',650,'right');
       text(c,title,m,h*.943,h*.141,w-2*m,'#f4e3ac','display',650);
       text(c,sub,w-m,h*.77,h*.038,w*.69,'#dde7df','text',550,'right');
     } else {
-      text(c,'막차  /  夜行',m,h*.114,h*.047,w*.45,'#262c27','text',700);
+      text(c,NightStudio.text('막차  /  夜行'),m,h*.114,h*.047,w*.45,'#262c27','text',700);
       text(c,'23:59',m,h*.64,h*.20,w*.5,'#a8452d','serif',400);
       text(c,title,w*.119,h*.863,h*.133,w*.83,'#262c27','serif',550);
       text(c,sub,w*.123,h*.919,h*.035,w*.80,'#473d2f','text',600);

@@ -10,7 +10,8 @@
     const key=tab.dataset.studio, ed=editions[key];
     for (const t of tabs) {const on=t===tab;t.setAttribute('aria-selected',String(on));t.tabIndex=on?0:-1;}
     $('edition').dataset.current=key;$('edition').setAttribute('aria-labelledby',tab.id);
-    $('edition-preview').src='assets/'+ed.image;$('edition-preview').alt=ed.alt;
+    const image=(key==='foley-club'||NightI18n.lang==='ko')?ed.image:ed.image.replace('.webp','-'+NightI18n.lang+'.webp');
+    $('edition-preview').src='assets/'+image;$('edition-preview').alt=ed.alt;
     $('edition-name').textContent=ed.title;$('edition-copy').textContent=ed.desc;
     $('start-edition').textContent=ed.cta;$('start-edition').href=key+'/?edition=house';
     $('start-blank').textContent=ed.studio+' 편집실 바로 열기';$('start-blank').href=key+'/';
@@ -36,12 +37,14 @@
         const link=document.createElement('a');link.className='recent-link';link.href=NightLibrary.projectURL(row);
         const img=document.createElement('img');img.alt='';img.loading='lazy';img.src=row.preview||'assets/'+studio.cover;
         const text=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');
-        strong.textContent=row.name;small.textContent=studio.name+' · '+NightLibrary.date(row.updated);
+        strong.dataset.noI18n='';strong.textContent=row.name;small.textContent=NightI18n.text(studio.name)+' · '+NightLibrary.date(row.updated);
         text.append(strong,small);link.append(img,text);grid.append(link);
       }
       panel.replaceChildren(grid);
     }catch {panel.textContent='작업 보관함을 사용하려면 이 브라우저의 사이트 데이터 저장을 허용해 주세요.';}
   }
-  window.addEventListener('pageshow',refresh);window.addEventListener('night-library-change',refresh);
+  function applyEdition(){choose(tabs.find(t=>t.getAttribute('aria-selected')==='true')||tabs[0]);NightI18n.apply($('edition'));}
+  applyEdition();
+  document.addEventListener('night-language',()=>{applyEdition();refresh();});window.addEventListener('pageshow',refresh);window.addEventListener('night-library-change',refresh);
   refresh();
 })();

@@ -5,7 +5,9 @@
   const studios = {
     'last-train': {name:'막차', medium:'포스터', cover:'platform-cover.webp'},
     'foley-club': {name:'폴리 클럽', medium:'사운드', cover:'hallway-cover.webp'},
-    'light-table': {name:'라이트 테이블', medium:'사진', cover:'diner-cover.webp'}
+    'light-table': {name:'라이트 테이블', medium:'사진', cover:'diner-cover.webp'},
+    'spell-stage': {name:'Astral Atelier', medium:'카메라 무대', cover:'astral-cover.webp'},
+    'portrait-stage': {name:'Portrait Loom', medium:'카메라 무대', cover:'loom-cover.webp'}
   };
   const studio = Object.keys(studios).find(key => location.pathname.startsWith(new URL(key+'/', base).pathname));
   const stylesheet = document.createElement('link');
@@ -92,7 +94,7 @@
     if (view === 'list' && dialog?.open) renderList();
   };
   const list = async () => (await read('catalog')).sort((a,b)=>b.updated-a.updated);
-  const date = ts => new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(ts);
+  const date = ts => new Intl.DateTimeFormat(NightI18n.lang,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(ts);
   const el = (name, className, content) => {
     const node = document.createElement(name);
     if (className) node.className=className;
@@ -204,10 +206,11 @@
     const anchor=el('a','ns-project');anchor.href=projectURL(row);anchor.dataset.projectLink=row.id;
     const img=el('img','ns-thumb');img.alt='';img.width=88;img.height=66;img.src=safePreview(row.preview)||new URL('assets/'+studios[row.studio].cover,base);
     const info=el('span','ns-project-info');
-    info.append(el('small','ns-type',studios[row.studio].name),el('strong','',row.name),el('small','ns-date',date(row.updated)));
+    const name=el('strong','',row.name);name.dataset.noI18n='';
+    info.append(el('small','ns-type',studios[row.studio].name),name,el('small','ns-date',date(row.updated)));
     anchor.append(img,info);line.append(anchor);
     const more=action('관리',()=>{manage.hidden=!manage.hidden;more.setAttribute('aria-expanded',String(!manage.hidden));},'ns-quiet');
-    more.setAttribute('aria-label',row.name+' 관리');more.setAttribute('aria-expanded','false');
+    more.setAttribute('aria-label',NightI18n.text('관리')+' · '+row.name);more.setAttribute('aria-expanded','false');
     const manage=el('div','ns-manage');manage.hidden=true;
     const backup=action('파일 내보내기',async()=>{try{const record=await fetchProject(row.id);if(!record)throw new Error('이 프로젝트가 삭제되었습니다.');download(record.row,record.state);}catch(error){showError(error);}},'ns-button');
     const del=action('삭제',()=>{
@@ -257,5 +260,6 @@
   document.addEventListener('keydown',event=>{
     if(adapter && (event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='s'){event.preventDefault();if(!dialog?.open)saveForm();}
   });
+  document.addEventListener('night-language',()=>{if(dialog?.open && view==='list')renderList();});
   window.NightLibrary={register,list,projectURL,date,studios,open:renderList};
 })();

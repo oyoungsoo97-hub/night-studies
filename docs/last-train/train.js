@@ -13,7 +13,9 @@
   let W = 0, H = 0, filmTime = .85, playing = false, previous = 0, animation = 0;
   let openingArea = .01, stroke = null, strokes = [], redo = [], pointer = null, auto = null, autoIndex=0;
   let photo = null, poster = null, trainPhoto = null, gradedTrain = null, visible = true, frameDirty = true;
-  let design={stock:'vermilion',format:'print',title:'LAST TRAIN',subtitle:'종점행 · 마지막 열차',width:100};
+  const {text:tr,format,word,say}=NightStudio;
+  let localizedDesign={title:'막차',subtitle:'종점행 · 마지막 열차'};
+  let design={stock:'vermilion',format:'print',title:tr('막차'),subtitle:tr('종점행 · 마지막 열차'),width:100};
   const origin = new URL('.', location.href);
   const marks = [.85,2.65,5.80,8.15,11.25];
   const labels = ['승강장','진입','교차','출발','종점'];
@@ -220,7 +222,7 @@
     el('playToggle').setAttribute('aria-label',playing?'현재 프레임에서 정지':'필름 재생');
     document.querySelectorAll('[data-frame]').forEach(b=>b.setAttribute('aria-pressed',String(Math.abs(filmTime-Number(b.dataset.frame))<=.03)));
   }
-  function setSceneText(message){if(sceneStatus.textContent!==message)sceneStatus.textContent=message;}
+  function setSceneText(key,values){say(sceneStatus,key,values);}
   function queue(){if(!animation && visible)animation=requestAnimationFrame(tick);}
   function pause(){
     const wasPlaying=playing;playing=false;previous=0;sound.quiet();updateClock();if(wasPlaying)paint();
@@ -301,14 +303,14 @@
   function download(){
     if(auto){auto=null;end();}
     pause();paint();
-    const clean=(design.title.trim()||'LAST TRAIN').replace(/[\\/:*?"<>|]/g,'-').slice(0,55);
+    const clean=(design.title.trim()||tr('막차')).replace(/[\\/:*?"<>|]/g,'-').slice(0,55);
     const name=clean+'-'+filmTime.toFixed(2)+'s.png';
     try{
       canvas.toBlob(blob=>{
         if(!blob){setSceneText('이미지를 만들 수 없어요. 다시 시도해 주세요.');return;}
         const url=URL.createObjectURL(blob),a=document.createElement('a');
         a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
-        setSceneText(name+' 파일을 내보냈어요.');
+        setSceneText('{name} 파일을 내보냈어요.',{name});
       },'image/png');
     }catch{setSceneText('웹 서버를 통해 열면 포스터를 내보낼 수 있어요.');}
   }
@@ -335,11 +337,11 @@
     const strip=el('filmstrip');
     marks.forEach((time,index)=>{
       const button=document.createElement('button'),thumb=document.createElement('canvas'),tag=document.createElement('span');
-      button.type='button';button.dataset.frame=time;button.setAttribute('aria-label',labels[index]+' 장면, '+time.toFixed(2)+'초');
+      button.type='button';button.dataset.frame=time;button.setAttribute('aria-label',format('{scene} 장면, {time}초',{scene:word(labels[index]),time:time.toFixed(2)}));
       thumb.width=240;thumb.height=96;thumb.setAttribute('aria-hidden','true');
-      tag.textContent=time.toFixed(1)+'s';button.title=labels[index];
+      tag.textContent=time.toFixed(1)+'s';button.title=tr(labels[index]);
       button.append(thumb,tag);strip.append(button);
-      button.addEventListener('click',()=>{seekTo(time);setSceneText(labels[index]+' 장면을 골랐어요.');});
+      button.addEventListener('click',()=>{seekTo(time);setSceneText('{scene} 장면을 골랐어요.',{scene:word(labels[index])});});
     });
   }
   function renderFilmstrip(){
@@ -354,7 +356,7 @@
     el('filmTitle').value=design.title;el('subtitle').value=design.subtitle;
     el('cutWidth').value=design.width;el('widthValue').textContent=design.width+'%';
     el('paperName').textContent=stocks[design.stock].name;
-    el('backgroundName').textContent=background?.name||'자정의 승강장';el('resetBackground').hidden=!background;
+    el('backgroundName').textContent=background?.name||tr('자정의 승강장');el('resetBackground').hidden=!background;
     el('photoFraming').hidden=!background;
     if(background){
       const scale=Math.max(W/photo.width,H/photo.height);
@@ -387,7 +389,7 @@
   }
   for(const [id,key] of [['filmTitle','title'],['subtitle','subtitle']]){
     el(id).addEventListener('input',e=>{
-      pause();design[key]=e.currentTarget.value;createPrint();buildPaper();paint();
+      pause();delete localizedDesign[key];design[key]=e.currentTarget.value;createPrint();buildPaper();paint();
     });
   }
   el('cutWidth').addEventListener('input',e=>{
@@ -398,7 +400,7 @@
   el('replay').addEventListener('click',()=>{seekTo(0);play();});
   el('soundToggle').addEventListener('click',e=>{
     const enabled=sound.toggle();e.currentTarget.setAttribute('aria-pressed',String(enabled));
-    e.currentTarget.textContent='현장음 '+(enabled?'켬':'끔');sound.update(filmTime,playing);
+    e.currentTarget.textContent=tr(enabled?'현장음 켬':'현장음 끔');sound.update(filmTime,playing);
   });
   el('savePoster').addEventListener('click',download);
   el('autoTear').addEventListener('click',autoRip);
@@ -442,7 +444,7 @@
   }
   function decodePhoto(url){
     return new Promise((resolve,reject)=>{
-      const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error('사진을 열 수 없어요. JPG, PNG, WebP 이미지를 골라 주세요.'));img.src=url;
+      const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error(NightStudio.text('사진을 열 수 없어요. JPG, PNG, WebP 이미지를 골라 주세요.')));img.src=url;
     });
   }
   async function importBackground(file){
@@ -450,13 +452,13 @@
     const revision=++photoRevision,status=el('photoStatus');status.textContent='사진을 준비하고 있어요.';
     let url;
     try{
-      if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>32*1024*1024)throw Error('32 MB 이하의 JPG, PNG, WebP 이미지를 골라 주세요.');
+      if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>32*1024*1024)throw Error(NightStudio.text('32 MB 이하의 JPG, PNG, WebP 이미지를 골라 주세요.'));
       url=URL.createObjectURL(file);const img=await decodePhoto(url),scale=Math.min(1,1600/Math.max(img.width,img.height));
       const scaled=document.createElement('canvas');scaled.width=Math.max(1,Math.round(img.width*scale));scaled.height=Math.max(1,Math.round(img.height*scale));
       const c=scaled.getContext('2d');c.fillStyle='#202727';c.fillRect(0,0,scaled.width,scaled.height);c.drawImage(img,0,0,scaled.width,scaled.height);
       const data=scaled.toDataURL('image/jpeg',.84),result=await decodePhoto(data);
       if(revision!==photoRevision)return;
-      const name=file.name.replace(/\.[^.]+$/,'').trim().slice(0,80)||'내 사진';
+      const name=file.name.replace(/\.[^.]+$/,'').trim().slice(0,80)||tr('내 사진');
       seekTo(filmTime);selectBackground({name,data,panX:50,panY:54,actors:true},result);status.textContent='';setSceneText('내 사진을 필름 배경으로 적용했어요.');
     }catch(error){if(revision===photoRevision)status.textContent=error.message;}
     finally{if(url)URL.revokeObjectURL(url);}
@@ -473,13 +475,13 @@
   el('resetBackground').addEventListener('click',()=>{photoRevision++;el('photoStatus').textContent='';seekTo(filmTime);selectBackground(null,null);setSceneText('자정의 승강장으로 돌아왔어요.');});
   function state(){
     seekTo(filmTime);
-    return {version:1,design:{...design},background:background?{...background}:null,time:filmTime,cuts:strokes.map(s=>s.points.map(p=>[p.x,p.y,p.r])),autoIndex};
+    return {version:1,design:{...design},localizedDesign:{...localizedDesign},background:background?{...background}:null,time:filmTime,cuts:strokes.map(s=>s.points.map(p=>[p.x,p.y,p.r])),autoIndex};
   }
   function example(){
-    return {version:1,design:{stock:'blueprint',format:'print',width:116,title:'마지막 안내방송',subtitle:'23시 59분, 건너편 승강장에서'},time:5.8,cuts:[editionCut(true)],autoIndex:1};
+    return {version:1,localizedDesign:{title:'마지막 안내방송',subtitle:'23시 59분, 건너편 승강장에서'},design:{stock:'blueprint',format:'print',width:116,title:tr('마지막 안내방송'),subtitle:tr('23시 59분, 건너편 승강장에서')},time:5.8,cuts:[editionCut(true)],autoIndex:1};
   }
   function readProject(data){
-    const fail=()=>{throw Error('이 포스터 프로젝트의 편집 데이터를 읽을 수 없습니다.');};
+    const fail=()=>{throw Error(NightStudio.text('이 포스터 프로젝트의 편집 데이터를 읽을 수 없습니다.'));};
     const bounded=(value,min,max)=>Number.isFinite(value)&&value>=min&&value<=max;
     const d=data?.design;
     if(data?.version!==1||!d||typeof d.stock!=='string'||typeof d.format!=='string'||!Object.hasOwn(stocks,d.stock)||!Object.hasOwn(formats,d.format)||
@@ -501,11 +503,15 @@
   async function restore(data){
     const next=readProject(data);await assetsReady;
     const image=next.background?await decodePhoto(next.background.data):null;
-    if(image&&Math.max(image.width,image.height)>1600)throw Error('이 프로젝트의 배경 사진이 너무 큽니다.');
+    if(image&&Math.max(image.width,image.height)>1600)throw Error(NightStudio.text('이 프로젝트의 배경 사진이 너무 큽니다.'));
     photoRevision++;background=next.background;photo=image||stockPhoto;el('photoStatus').textContent='';
     auto=null;stroke=null;handDrawing=false;
     if(pointer!==null&&canvas.hasPointerCapture(pointer))canvas.releasePointerCapture(pointer);
     pointer=null;pause();redo=[];
+    localizedDesign={};
+    for(const [key,allowed] of Object.entries({title:['막차','마지막 안내방송'],subtitle:['종점행 · 마지막 열차','23시 59분, 건너편 승강장에서']})){
+      const template=data.localizedDesign?.[key];if(allowed.includes(template)){localizedDesign[key]=template;next.design[key]=tr(template);}
+    }
     design=next.design;filmTime=next.time;autoIndex=next.autoIndex;strokes=next.strokes;
     rebuildDesign();setSceneText('저장된 프레임과 인쇄 설정을 불러왔어요.');
   }
@@ -519,6 +525,11 @@
       const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>resolve(null);img.src=new URL('../assets/'+file,origin);
     });
   }
+  document.addEventListener('night-language',()=>{
+    for(const [id,template] of Object.entries(localizedDesign))design[id]=tr(template);
+    el('filmstrip').replaceChildren();makeFilmstrip();
+    if(W&&document.documentElement.dataset.trainReady)rebuildDesign();
+  });
   makeFilmstrip();createCarriage();
   const fonts=Promise.allSettled([document.fonts.load('650 72px BarlowCondensed'),document.fonts.load('400 72px InstrumentSerif')]);
   assetsReady=Promise.all([imageAsset('platform.jpg'),imageAsset('poster.jpg'),imageAsset('carriage.webp'),fonts]).then(([stationPhoto,printPhoto,carPhoto])=>{
@@ -531,5 +542,5 @@
     if(W&&e.target.closest('[data-library],[data-save-project]'))seekTo(filmTime);
   },true);
   const observer=new ResizeObserver(layoutCanvas);observer.observe(el('trainStage'));
-  assetsReady.then(()=>window.NightLibrary?.register({getState:state,restore,getTitle:()=>design.title.trim()||'LAST TRAIN',getPreview,getExample:example}));
+  assetsReady.then(()=>window.NightLibrary?.register({getState:state,restore,getTitle:()=>design.title.trim()||tr('막차'),getPreview,getExample:example}));
 })();

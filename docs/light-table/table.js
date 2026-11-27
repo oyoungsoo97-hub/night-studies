@@ -1,5 +1,6 @@
 "use strict";
 (() => {
+  const {text:tr,format:phrase,say}=NightStudio;
   const $ = id => document.getElementById(id);
   let image = $("sourcePhoto");
   const stage = $("stage");
@@ -11,6 +12,10 @@
   const frameRatio = 4 / 3;
   const houseId = "diner";
   const houseTitle = "비 오는 밤의 식당";
+  const sampleCaptions=["유리 너머의 사람","두 사람이 있었던 자리","마지막 불빛"];
+  let titleKey=houseTitle;
+  $("storyTitle").value=tr(titleKey);
+  const sourceName=asset=>asset.id===houseId?tr(houseTitle):asset.name;
   const defaultFocus = (source = houseId) => ({source, x: source === houseId ? .435 : .5, y: source === houseId ? .665 : .5, zoom: source === houseId ? 3 : 1.5, caption:""});
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const papers = {
@@ -45,7 +50,7 @@
 
   function state() {
     return {
-      version:2, title:$("storyTitle").value, layout:$("layout").value, paper:$("paper").value, format:$("format").value,
+      version:2, title:$("storyTitle").value, titleKey, layout:$("layout").value, paper:$("paper").value, format:$("format").value,
       active:activeId, editIndex, focus:{...focus,caption:$("caption").value}, cuts:selection.map(cut=>({...cut})),
       sources:[...sources.values()].filter(src=>src.id!==houseId).map(({id,name,data})=>({id,name,data}))
     };
@@ -81,7 +86,7 @@
       if (!standaloneDraft) return;
       const snapshot=state();
       if(!snapshot.sources.length){
-        try {localStorage.setItem(storeKey,JSON.stringify({cuts:snapshot.cuts,title:snapshot.title}));} catch {}
+        try {localStorage.setItem(storeKey,JSON.stringify({cuts:snapshot.cuts,title:snapshot.title,titleKey:snapshot.titleKey}));} catch {}
       }
       try {
         const db=await database();
@@ -92,7 +97,7 @@
     });
   }
 
-  function setSourceStatus(text){$("sourceStatus").textContent=text;}
+  function setSourceStatus(key,values){say($("sourceStatus"),key,values);}
   function photoFor(cut){return sources.get(cut.source || houseId).img;}
 
   function cropRect(cut) {
@@ -195,7 +200,7 @@
   function updatePreview() {
     $("zoom").value = String(focus.zoom);
     $("zoomValue").value = focus.zoom.toFixed(1) + "×";
-    $("zoom").setAttribute("aria-valuetext", focus.zoom.toFixed(1) + "배");
+    $("zoom").setAttribute("aria-valuetext", focus.zoom.toFixed(1) + "×");
     scheduleDraw();
   }
 
@@ -207,7 +212,7 @@
       card.type = "button";card.className = "frame" + (item ? "" : " empty");
       card.dataset.index = String(i);
       card.disabled = !item || !loaded;
-      card.setAttribute("aria-label", item ? (i + 1) + "번째 컷 위치와 순서 편집" : (i + 1) + "번째 컷 비어 있음");
+      card.setAttribute("aria-label", phrase(item?"{n}번째 컷 위치와 순서 편집":"{n}번째 컷 비어 있음",{n:i+1}));
       card.setAttribute("aria-pressed", String(editIndex === i));
       if (item && loaded) {
         const thumb = document.createElement("canvas");
@@ -221,7 +226,7 @@
       }
       const meta = document.createElement("span");meta.className = "meta";
       const index = document.createElement("b");index.textContent = String(i + 1).padStart(2, "0");
-      const note = document.createElement("span");note.textContent = item ? (item.caption || sources.get(item.source).name) : "빈 컷";
+      const note = document.createElement("span");note.dataset.noI18n="";note.textContent=item?(item.caption||sourceName(sources.get(item.source))):tr("빈 컷");
       meta.append(index, note);card.append(meta); frames.append(card);
     }
     $("count").textContent = selection.length + " / 3";
@@ -232,13 +237,13 @@
     $("cancelEdit").hidden = editIndex === null;
     $("frameTools").hidden = editIndex === null;
     if (editIndex !== null) {
-      $("selectedLabel").textContent = (editIndex + 1) + "번째 컷";
+      $("selectedLabel").textContent = phrase("{n}번째 컷",{n:editIndex+1});
       $("earlier").disabled = editIndex === 0;
       $("later").disabled = editIndex === selection.length - 1;
     }
   }
 
-  function announce(message) { $("notice").textContent = message; }
+  function announce(key,values){say($("notice"),key,values);}
 
   function selectFrame(index) {
     editIndex = index;
@@ -257,7 +262,7 @@
     [selection[editIndex], selection[target]] = [selection[target], selection[editIndex]];
     editIndex = target;
     persist();renderFrames();
-    announce("선택한 컷이 " + (target + 1) + "번째로 이동했습니다.");
+    announce("선택한 컷이 {n}번째로 이동했습니다.",{n:target+1});
     const nextButton = $(offset === -1 ? "earlier" : "later");
     if (nextButton.disabled) {
       frames.querySelector('[data-index="' + target + '"]').focus({preventScroll:true});
@@ -278,7 +283,7 @@
     focus.caption = $("caption").value.trim().slice(0,40);
     const replacing = editIndex !== null;
     if (replacing) selection[editIndex] = {...focus};else selection.push({...focus});
-    editIndex = null;$("caption").value="";focus.caption="";persist();renderFrames();
+    editIndex = null;$("caption").value="";focus.caption="";delete focus.captionKey;persist();renderFrames();
     announce(replacing ? "컷을 교체했습니다." : selection.length === 3 ?
       "세 컷을 모두 골랐습니다. 인화지에서 이야기를 확인하세요." : "컷을 담았습니다. 다음 장면을 찾아보세요.");
   }
@@ -317,7 +322,7 @@
   });
   $("capture").addEventListener("click",capture);
   $("cancelEdit").addEventListener("click", () => {
-    editIndex = null;$("caption").value="";focus.caption="";renderFrames();persist();announce("원래 컷을 유지했습니다.");$("capture").focus({preventScroll:true});
+    editIndex = null;$("caption").value="";focus.caption="";delete focus.captionKey;renderFrames();persist();announce("원래 컷을 유지했습니다.");$("capture").focus({preventScroll:true});
   });
   $("earlier").addEventListener("click",()=>reorder(-1));$("later").addEventListener("click",()=>reorder(1));
   $("remove").addEventListener("click",()=>{
@@ -352,7 +357,7 @@
     ctx.fillStyle=paper.background;ctx.fillRect(0,0,w,h);
     ctx.fillStyle=paper.ink;ctx.font='500 '+(compact?24:30)+'px '+mono;
     ctx.textAlign="left";ctx.fillText("NIGHT STUDIES  /  LIGHT TABLE",edge,compact?80:92);
-    ctx.textAlign="right";ctx.fillText("CONTACT PRINT  /  3",w-edge,compact?80:92);
+    ctx.textAlign="right";ctx.fillText(tr("콘택트 인화 / 3"),w-edge,compact?80:92);
     ctx.fillRect(edge,compact?108:121,w-edge*2,3);
     selection.forEach((cut,i)=>{
       const [x,y,width]=boxes[i],height=width/frameRatio;
@@ -360,25 +365,25 @@
       ctx.fillStyle=paper.muted;ctx.font="500 23px "+mono;ctx.textAlign="left";
       const baseline=y+height+43;
       ctx.fillText(String(i+1).padStart(2,"0"),x,baseline);
-      const label=cut.caption || sources.get(cut.source).name;
+      const label=cut.caption || sourceName(sources.get(cut.source));
       ctx.fillStyle=paper.ink;
       fitText(ctx,label,width-150,27,17,"500",sans);
       ctx.fillText(label,x+48,baseline,width-145);
       ctx.textAlign="right";ctx.font="500 22px "+mono;ctx.fillStyle=paper.muted;
       ctx.fillText(cut.zoom.toFixed(1)+"×",x+width,baseline);
     });
-    const title=$("storyTitle").value.trim()||"무제";
+    const title=$("storyTitle").value.trim()||tr("무제");
     ctx.textAlign="left";ctx.fillStyle=paper.ink;
     fitText(ctx,title,w-edge*2,layout==="strip"?88:80,26,"600",sans);
     ctx.fillText(title,edge,h-78,w-edge*2);
     ctx.fillStyle=paper.accent;ctx.fillRect(edge,h-45,92,5);
     $("dimensions").textContent=w+" × "+h+" px";
-    $("download").textContent=($("format").value==="jpeg"?"JPEG":"PNG")+" 인화 저장";
+    $("download").textContent=phrase("{format} 인화 저장",{format:$("format").value==="jpeg"?"JPEG":"PNG"});
   }
 
   function openProof() {
     if (!loaded || selection.length!==3 || proof.open) return;
-    renderPrint();$("printStatus").textContent="";proof.showModal();
+    renderPrint();say($("printStatus"),"");proof.showModal();
   }
   $("proof").addEventListener("click",openProof);
   $("closeProof").addEventListener("click",()=>proof.close());
@@ -388,9 +393,9 @@
     if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) proof.close();
   });
   for(const id of ["storyTitle","layout","paper","format"]) {
-    $(id).addEventListener(id==="storyTitle"?"input":"change",()=>{persist();renderPrint();$("printStatus").textContent="";});
+    $(id).addEventListener(id==="storyTitle"?"input":"change",()=>{if(id==="storyTitle")titleKey=null;persist();renderPrint();say($("printStatus"),"");});
   }
-  $("caption").addEventListener("input",persist);
+  $("caption").addEventListener("input",()=>{delete focus.captionKey;persist();});
   $("download").addEventListener("click",()=>{
     const button=$("download"),canvas=$("proofCanvas");
     const format=$("format").value;
@@ -403,23 +408,23 @@
         const title=$("storyTitle").value.trim().replace(/[^\p{L}\p{N}_ -]/gu,"").slice(0,45).trim();
         link.download=(title || "Light Table")+" — Light Table."+(format==="jpeg"?"jpg":"png");link.href=url;
         document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-        button.disabled=false;$("printStatus").textContent=canvas.width+" × "+canvas.height+" "+format.toUpperCase()+" 파일을 만들었습니다.";
+        button.disabled=false;say($("printStatus"),"{info} 파일을 만들었습니다.",{info:canvas.width+" × "+canvas.height+" "+format.toUpperCase()});
       },"image/"+format,.94);
     } catch {fail();}
   });
 
   function showSource(id) {
     const asset=sources.get(id);
-    if(!asset)throw Error("사진 원판을 찾을 수 없습니다.");
+    if(!asset)throw Error(tr("사진 원판을 찾을 수 없습니다."));
     activeId=id;
     if(image!==asset.img){image.replaceWith(asset.img);image.removeAttribute("id");image=asset.img;}
-    image.id="sourcePhoto";image.alt=asset.name;image.draggable=false;
+    image.id="sourcePhoto";image.dataset.noI18n="";image.alt=asset.id===houseId?tr("비 내리는 밤, 유리창 안팎의 풍경이 겹치는 식당"):asset.name;image.draggable=false;
     loaded=true;pointer=null;
     const ratio=image.naturalWidth/image.naturalHeight;
     stage.style.aspectRatio=String(ratio);
     stage.style.setProperty("--stage-max",Math.round(ratio*720)+"px");
     stage.style.setProperty("--stage-vh",(ratio*66).toFixed(2)+"vh");
-    $("sourceName").textContent=asset.name;$("loadError").hidden=true;
+    $("sourceName").textContent=sourceName(asset);$("loadError").hidden=true;
     $("resolution").textContent=image.naturalWidth+" × "+image.naturalHeight;
     renderSources();
   }
@@ -435,9 +440,10 @@
     const bin=$("sources");bin.replaceChildren();
     for(const asset of sources.values()){
       const button=document.createElement("button");button.type="button";button.className="source-chip";button.dataset.id=asset.id;
-      button.setAttribute("aria-pressed",String(activeId===asset.id));button.setAttribute("aria-label",asset.name+" 원판 선택");button.title=asset.name;
+      button.dataset.noI18n="";
+      button.setAttribute("aria-pressed",String(activeId===asset.id));button.setAttribute("aria-label",phrase("{name} 원판 선택",{name:sourceName(asset)}));button.title=sourceName(asset);
       const thumb=document.createElement("img");thumb.src=asset.img.src;thumb.alt="";thumb.draggable=false;
-      const title=document.createElement("span");title.textContent=asset.name;
+      const title=document.createElement("span");title.textContent=sourceName(asset);
       button.append(thumb,title);button.addEventListener("click",()=>chooseSource(asset.id));bin.append(button);
     }
     $("sourceCount").textContent=sources.size+" / 6";
@@ -446,7 +452,7 @@
 
   function readDimensions(bytes) {
     const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
-    if(bytes.length<24)throw Error("사진 파일을 읽을 수 없습니다.");
+    if(bytes.length<24)throw Error(tr("사진 파일을 읽을 수 없습니다."));
     if(bytes[0]===137 && view.getUint32(1)===0x504e470d){
       return [view.getUint32(16),view.getUint32(20)];
     }
@@ -471,22 +477,22 @@
       if(tag===0x56503820) return[view.getUint16(26,true)&16383,view.getUint16(28,true)&16383];
       if(tag===0x5650384c) {const n=view.getUint32(21,true);return[(n&16383)+1,((n>>>14)&16383)+1];}
     }
-    throw Error("JPG, PNG, WebP 사진을 선택하세요.");
+    throw Error(tr("JPG, PNG, WebP 사진을 선택하세요."));
   }
 
   function checkPixels(bytes,maxEdge) {
     const [width,height]=readDimensions(bytes);
-    if(!width||!height||width*height>60000000||width>maxEdge||height>maxEdge)throw Error("사진 크기가 너무 큽니다. 작은 사본을 선택하세요.");
+    if(!width||!height||width*height>60000000||width>maxEdge||height>maxEdge)throw Error(tr("사진 크기가 너무 큽니다. 작은 사본을 선택하세요."));
   }
 
   async function decode(url) {
     const img=new Image();img.src=url;
-    try {await img.decode();} catch {throw Error("사진을 해석할 수 없습니다. JPG, PNG, WebP 파일을 확인하세요.");}
+    try {await img.decode();} catch {throw Error(tr("사진을 해석할 수 없습니다. JPG, PNG, WebP 파일을 확인하세요."));}
     return img;
   }
 
   async function importAsset(file) {
-    if(!file.size||file.size>20*1024*1024)throw Error("파일 한 장은 20 MB 이내여야 합니다.");
+    if(!file.size||file.size>20*1024*1024)throw Error(tr("파일 한 장은 20 MB 이내여야 합니다."));
     const bytes=new Uint8Array(await file.arrayBuffer());
     checkPixels(bytes,65535);
     const url=URL.createObjectURL(file);
@@ -505,9 +511,9 @@
         shrink.width=Math.max(1,Math.round(canvas.width*factor));shrink.height=Math.max(1,Math.round(canvas.height*factor));
         shrink.getContext("2d").drawImage(canvas,0,0,shrink.width,shrink.height);data=shrink.toDataURL("image/jpeg",.74);
       }
-      if(data.length>2400000||!data.startsWith("data:image/jpeg;base64,"))throw Error("사진을 작업용 크기로 변환하지 못했습니다.");
+      if(data.length>2400000||!data.startsWith("data:image/jpeg;base64,"))throw Error(tr("사진을 작업용 크기로 변환하지 못했습니다."));
     } finally {URL.revokeObjectURL(url);}
-    return {id:crypto.randomUUID(),name:trimField(file.name.replace(/\.[^.]+$/u,""),80)||"사진",data,img:await decode(data)};
+    return {id:crypto.randomUUID(),name:trimField(file.name.replace(/\.[^.]+$/u,""),80)||tr("사진"),data,img:await decode(data)};
   }
 
   async function addFiles(fileList) {
@@ -520,16 +526,20 @@
     const added=[],errors=[];
     try {
       for(const file of files.slice(0,capacity)){
-        setSourceStatus(file.name+" 불러오는 중…");
-        try {added.push(await importAsset(file));} catch(e){errors.push(file.name+" · "+e.message);}
+        setSourceStatus("{name} 불러오는 중…",{name:file.name});
+        try {added.push(await importAsset(file));} catch(e){errors.push({name:file.name,error:e.message});}
       }
       if(added.length){
         added.forEach(asset=>sources.set(asset.id,asset));
-        if(!selection.length && $("storyTitle").value===houseTitle)$("storyTitle").value=added[0].name.slice(0,45);
+        if(!selection.length&&titleKey===houseTitle){titleKey=null;$("storyTitle").value=added[0].name.slice(0,45);}
         chooseSource(added[0].id);
       }
-      if(files.length>capacity)errors.push("보관대에는 기본 사진과 내 사진 다섯 장을 담을 수 있습니다.");
-      setSourceStatus([added.length ? "사진 "+added.length+"장을 추가했습니다." : "",...errors].filter(Boolean).join(" "));
+      if(files.length>capacity)errors.push({name:"",error:"보관대에는 기본 사진과 내 사진 다섯 장을 담을 수 있습니다."});
+      if(!errors.length)setSourceStatus("사진 {n}장을 추가했습니다.",{n:added.length});
+      else {
+        const report=()=>[added.length?phrase("사진 {n}장을 추가했습니다.",{n:added.length}):"",...errors.map(({name,error})=>(name?name+" · ":"")+NightI18n.text(error))].filter(Boolean).join(" ");
+        say($("sourceStatus"),report);
+      }
     } finally { sourceBusy=false;$("importPhoto").disabled=false; }
   }
 
@@ -543,7 +553,7 @@
   $("discardSource").addEventListener("click",()=>{
     if(activeId===houseId||sourceBusy)return;
     const used=selection.filter(c=>c.source===activeId).length;
-    if(used&&!confirm("이 원판과 이 원판에서 고른 "+used+"개 컷을 뺄까요?"))return;
+    if(used&&!confirm(phrase("이 원판과 이 원판에서 고른 {n}개 컷을 뺄까요?",{n:used})))return;
     selection=selection.filter(cut=>cut.source!==activeId);editIndex=null;
     sources.delete(activeId);chooseSource(houseId);setSourceStatus("원판을 보관대에서 뺐습니다.");
   });
@@ -551,42 +561,44 @@
   async function restoreAsset(value) {
     if(!value||typeof value.id!=="string"||!/^[-a-zA-Z0-9_]{1,64}$/.test(value.id)||value.id===houseId||
       typeof value.name!=="string"||!value.name.trim()||typeof value.data!=="string"||value.data.length>2400000||
-      !/^data:image\/jpeg;base64,[a-zA-Z0-9+/]+=*$/u.test(value.data))throw Error("프로젝트의 사진 형식이 올바르지 않습니다.");
+      !/^data:image\/jpeg;base64,[a-zA-Z0-9+/]+=*$/u.test(value.data))throw Error(tr("프로젝트의 사진 형식이 올바르지 않습니다."));
     const body=value.data.slice(23);
     let bytes;
-    try {bytes=Uint8Array.from(atob(body),c=>c.charCodeAt(0));} catch {throw Error("저장된 사진을 읽을 수 없습니다.");}
+    try {bytes=Uint8Array.from(atob(body),c=>c.charCodeAt(0));} catch {throw Error(tr("저장된 사진을 읽을 수 없습니다."));}
     checkPixels(bytes,2560);
     return {id:value.id,name:trimField(value.name,80),data:value.data,img:await decode(value.data)};
   }
 
   async function applyState(saved,asDraft=false) {
     if(!saved||!Array.isArray(saved.cuts)||saved.cuts.length>3||!saved.cuts.every(validFocus)||
-      (saved.version!==undefined&&saved.version!==2))throw Error("지원하지 않는 Light Table 프로젝트입니다.");
+      (saved.version!==undefined&&saved.version!==2))throw Error(tr("지원하지 않는 Light Table 프로젝트입니다."));
     const personal=saved.sources===undefined?[]:saved.sources;
-    if(!Array.isArray(personal)||personal.length>5)throw Error("원판 개수를 확인하세요.");
+    if(!Array.isArray(personal)||personal.length>5)throw Error(tr("원판 개수를 확인하세요."));
     const nextSources=new Map([[houseId,housePhoto]]);
     for(const item of personal){
       const asset=await restoreAsset(item);
-      if(nextSources.has(asset.id))throw Error("중복된 원판입니다.");
+      if(nextSources.has(asset.id))throw Error(tr("중복된 원판입니다."));
       nextSources.set(asset.id,asset);
     }
     function validated(cut){
       const id=cut.source||houseId;
-      if(!validFocus(cut)||!nextSources.has(id))throw Error("컷이 참조하는 사진이나 구도가 올바르지 않습니다.");
-      return {source:id,x:cut.x,y:cut.y,zoom:cut.zoom,caption:trimField(cut.caption,40)};
+      if(!validFocus(cut)||!nextSources.has(id))throw Error(tr("컷이 참조하는 사진이나 구도가 올바르지 않습니다."));
+      const captionKey=sampleCaptions.includes(cut.captionKey)?cut.captionKey:null;
+      return {source:id,x:cut.x,y:cut.y,zoom:cut.zoom,caption:captionKey?tr(captionKey):trimField(cut.caption,40),...(captionKey?{captionKey}:{})};
     }
     const nextCuts=saved.cuts.map(validated);
     const nextId=saved.active||houseId;
-    if(!nextSources.has(nextId))throw Error("선택한 원판이 없습니다.");
+    if(!nextSources.has(nextId))throw Error(tr("선택한 원판이 없습니다."));
     const nextFocus=validated(saved.focus||defaultFocus(nextId));
-    if(nextFocus.source!==nextId)throw Error("원판과 확대경 데이터가 일치하지 않습니다.");
+    if(nextFocus.source!==nextId)throw Error(tr("원판과 확대경 데이터가 일치하지 않습니다."));
     const nextEdit=saved.editIndex ?? null;
-    if(nextEdit!==null&&(!Number.isInteger(nextEdit)||nextEdit<0||nextEdit>=nextCuts.length))throw Error("선택한 컷을 찾을 수 없습니다.");
+    if(nextEdit!==null&&(!Number.isInteger(nextEdit)||nextEdit<0||nextEdit>=nextCuts.length))throw Error(tr("선택한 컷을 찾을 수 없습니다."));
     const layout=saved.layout||"strip",paper=saved.paper||"ivory",format=saved.format||"png";
-    if(!Object.hasOwn(layouts,layout)||!Object.hasOwn(papers,paper)||!["jpeg","png"].includes(format))throw Error("인화 설정이 올바르지 않습니다.");
+    if(!Object.hasOwn(layouts,layout)||!Object.hasOwn(papers,paper)||!["jpeg","png"].includes(format))throw Error(tr("인화 설정이 올바르지 않습니다."));
     // Replace the workspace only after every image and crop has validated.
     sources=nextSources;selection=nextCuts;editIndex=nextEdit;focus=nextFocus;standaloneDraft=asDraft;
-    $("storyTitle").value=trimField(saved.title,45)||houseTitle;
+    titleKey=[houseTitle,"비가 그친 뒤"].includes(saved.titleKey)?saved.titleKey:typeof saved.title==="string"?null:houseTitle;
+    $("storyTitle").value=titleKey?tr(titleKey):trimField(saved.title,45);
     $("caption").value=focus.caption;$("layout").value=layout;$("paper").value=paper;$("format").value=format;
     showSource(nextId);constrainFocus();updatePreview();renderFrames();announce("");
     if(proof.open)proof.close();
@@ -594,10 +606,10 @@
   }
 
   function example() {
-    return {version:2,title:"비가 그친 뒤",layout:"cover",paper:"ivory",format:"png",sources:[],active:houseId,focus:defaultFocus(),cuts:[
-      {source:houseId,x:.115,y:.44,zoom:2.9,caption:"유리 너머의 사람"},
-      {source:houseId,x:.43,y:.69,zoom:3.1,caption:"두 사람이 있었던 자리"},
-      {source:houseId,x:.915,y:.47,zoom:3.9,caption:"마지막 불빛"}
+    return {version:2,title:tr("비가 그친 뒤"),titleKey:"비가 그친 뒤",layout:"cover",paper:"ivory",format:"png",sources:[],active:houseId,focus:defaultFocus(),cuts:[
+      {source:houseId,x:.115,y:.44,zoom:2.9,caption:tr("유리 너머의 사람"),captionKey:"유리 너머의 사람"},
+      {source:houseId,x:.43,y:.69,zoom:3.1,caption:tr("두 사람이 있었던 자리"),captionKey:"두 사람이 있었던 자리"},
+      {source:houseId,x:.915,y:.47,zoom:3.9,caption:tr("마지막 불빛"),captionKey:"마지막 불빛"}
     ]};
   }
 
@@ -621,12 +633,21 @@
       $("loadError").hidden=false;$("resolution").textContent="사진 읽기 오류";renderFrames();
     }
   }
+  document.addEventListener("night-language",()=>{
+    if(titleKey)$("storyTitle").value=tr(titleKey);
+    for(const cut of selection)if(cut.captionKey)cut.caption=tr(cut.captionKey);
+    if(focus.captionKey){focus.caption=tr(focus.captionKey);$("caption").value=focus.caption;}
+    if(loaded){const asset=sources.get(activeId);$("sourceName").textContent=sourceName(asset);
+      image.alt=asset.id===houseId?tr("비 내리는 밤, 유리창 안팎의 풍경이 겹치는 식당"):asset.name;
+      renderSources();renderFrames();updatePreview();if(proof.open)renderPrint();
+    }
+  });
   const ready=initialize();
   $("retry").addEventListener("click",()=>location.reload());
   if(window.NightLibrary)window.NightLibrary.register({
-    getState:async()=>{await ready;if(!loaded||sourceBusy)throw Error("사진이 열린 뒤 저장하세요.");return state();},
-    restore:async data=>{await ready;if(!housePhoto||sourceBusy)throw Error("원판을 연 뒤 다시 시도하세요.");sourceBusy=true;try{await applyState(data);}finally{sourceBusy=false;}},
-    getTitle:()=>$("storyTitle").value.trim()||"무제",
+    getState:async()=>{await ready;if(!loaded||sourceBusy)throw Error(tr("사진이 열린 뒤 저장하세요."));return state();},
+    restore:async data=>{await ready;if(!housePhoto||sourceBusy)throw Error(tr("원판을 연 뒤 다시 시도하세요."));sourceBusy=true;try{await applyState(data);}finally{sourceBusy=false;}},
+    getTitle:()=>$("storyTitle").value.trim()||tr("무제"),
     getPreview,getExample:example
   });
   if("ResizeObserver" in window){

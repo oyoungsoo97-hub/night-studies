@@ -4,11 +4,12 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#171919"><meta name="description" content="막차가 지나는 열두 초에서 한 장면을 골라 활자와 찢어진 종이로 영화 포스터를 만드는 작업실.">
   <title>Last Train — 포스터 작업실 · Night Studies</title>
-  <link rel="icon" href="../mark.svg" type="image/svg+xml"><link rel="stylesheet" href="train.css?v=06afa9a368">
-  <script src="../library.js?v=04d6f1647b" defer></script><script src="print.js?v=4ea0a0b32b" defer></script><script src="train.js?v=8f65aeed9c" defer></script>
+  <link rel="icon" href="../mark.svg" type="image/svg+xml"><link rel="stylesheet" href="train.css?v=3909e42529">
+  <script src="../i18n.js?v=e4aa568ccb"></script><script src="../common-locales.js?v=770c93482a"></script><script src="../studio-locales.js?v=d217893ea4"></script>
+  <script src="../library.js?v=e522b8cf6c" defer></script><script src="print.js?v=6f0c1b17a7" defer></script><script src="train.js?v=ee3c432efc" defer></script>
 </head>
 <body>
-<header class="mast"><div class="nav-left"><a href="../index.html" class="home"><img src="../mark.svg" alt="">Night Studies</a><span class="divider">/</span><span class="workspace-name">포스터 작업실</span></div><div class="nav-actions"><button type="button" class="plain library-btn" data-library>작업 보관함</button><button type="button" class="project-btn" data-save-project>프로젝트 저장</button></div></header>
+<header class="mast"><div class="nav-left"><a href="../index.html" class="home"><img src="../mark.svg" alt="">Night Studies</a><span class="divider">/</span><span class="workspace-name">포스터 작업실</span></div><div class="nav-actions"><span data-language-picker></span><button type="button" class="plain library-btn" data-library>작업 보관함</button><button type="button" class="project-btn" data-save-project>프로젝트 저장</button></div></header>
 <main inert>
  <div class="headline"><div><h1 lang="en">Last Train<span>.</span></h1><p>막차가 지나는 열두 초에서 골라 만드는 한 장의 영화 포스터.</p></div><span class="format-label" id="printDimensions">1800 × 1200 px</span></div>
  <div class="workbench">
@@ -33,7 +34,7 @@
      <button type="button" data-stock="blueprint" aria-pressed="false"><span class="stock blue"></span>청사진</button>
      <button type="button" data-stock="letterpress" aria-pressed="false"><span class="stock cream"></span>활판</button>
    </div></fieldset>
-   <fieldset class="backdrop"><legend>필름 배경</legend><div class="photo-pick"><span id="backgroundName">자정의 승강장</span><button type="button" id="pickBackground">사진 가져오기</button><input type="file" id="backgroundFile" accept="image/jpeg,image/png,image/webp" hidden></div><details id="photoFraming" hidden><summary>사진 구도</summary><label for="photoPanX">좌우 위치</label><input type="range" id="photoPanX" min="0" max="100" value="50"><label for="photoPanY">상하 위치</label><input type="range" id="photoPanY" min="0" max="100" value="54"><label class="people-toggle"><input type="checkbox" id="photoActors" checked>승객과 열차 합성</label></details><button type="button" id="resetBackground" hidden>기본 승강장으로 복원</button><span id="photoStatus" role="status"></span></fieldset>
+   <fieldset class="backdrop"><legend>필름 배경</legend><div class="photo-pick"><span data-no-i18n id="backgroundName">자정의 승강장</span><button type="button" id="pickBackground">사진 가져오기</button><input type="file" id="backgroundFile" accept="image/jpeg,image/png,image/webp" hidden></div><details id="photoFraming" hidden><summary>사진 구도</summary><label for="photoPanX">좌우 위치</label><input type="range" id="photoPanX" min="0" max="100" value="50"><label for="photoPanY">상하 위치</label><input type="range" id="photoPanY" min="0" max="100" value="54"><label class="people-toggle"><input type="checkbox" id="photoActors" checked>승객과 열차 합성</label></details><button type="button" id="resetBackground" hidden>기본 승강장으로 복원</button><span id="photoStatus" role="status"></span></fieldset>
    <fieldset class="type-fields"><legend>타이포그래피</legend><label for="filmTitle">영화 제목</label><input id="filmTitle" maxlength="40" value="LAST TRAIN" autocomplete="off"><label for="subtitle">부제</label><input id="subtitle" maxlength="52" value="종점행 · 마지막 열차" autocomplete="off"></fieldset>
    <fieldset><legend>판형</legend><div class="formats" id="formatOptions">
      <button type="button" data-format="print" aria-pressed="true">3:2</button><button type="button" data-format="cinema" aria-pressed="false">16:9</button><button type="button" data-format="portrait" aria-pressed="false">4:5</button>
@@ -43,6 +44,6 @@
  </aside>
  </div>
 </main>
-<script src="../hand-control.js?v=9151a2b34d" defer></script>
+<script src="../hand-control.js?v=5493cade25" defer></script>
 </body>
 </html>

@@ -135,3 +135,5 @@ dialog::backdrop{background:#10130ee6}
 .proof-controls>label:first-child,.proof-controls>button,.proof-controls #printStatus{grid-column:1/-1}.proof-controls #dimensions{align-self:end;padding-bottom:10px}
 .print-mat{min-height:90px;padding:8px}#proofCanvas{max-height:37vh;max-height:37dvh}
 }
+@media(max-width:650px){.site-bar{flex-wrap:wrap;padding:7px 0}.project-actions{flex-wrap:wrap;justify-content:flex-end}.source-toolbar{gap:6px}.source-actions button{white-space:normal}.console .action{overflow-wrap:anywhere}}
+@media(max-width:350px){.frame .meta{align-items:flex-start;flex-direction:column}.frame .meta span{display:block;max-width:100%}}

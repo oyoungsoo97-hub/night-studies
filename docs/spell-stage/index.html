@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#16131c">
+<meta name="description" content="Astral Atelier — an interactive celestial stage for drawing constellations and casting light with your hands.">
+<title>Astral Atelier · Night Studies</title><link rel="icon" href="../mark.svg" type="image/svg+xml">
+<script src="../i18n.js?v=e4aa568ccb"></script><script src="../common-locales.js?v=770c93482a"></script><link rel="stylesheet" href="stage.css?v=832efb351b"><script defer src="../library.js?v=e522b8cf6c"></script><script type="module" src="stage.mjs?v=63f4ffaf59"></script>
+</head>
+<body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><symbol id="ink-icon" viewBox="0 0 58 52"><path d="M3 37Q10 13 22 12Q35 12 24 27Q14 40 23 41Q29 43 44 26L52 18"/><path d="M35 16l2-5 2 5 5 2-5 2-2 5-2-5-5-2z"/></symbol><symbol id="nova-icon" viewBox="0 0 58 52"><path d="M29 2l3.4 15 12-8-8 12 17 4-17 4 8 13-13-9-4 16-3-16-14 8 9-13-16-4 16-3-7-13 13 9z"/><circle cx="29" cy="25" r="5"/></symbol><symbol id="gate-icon" viewBox="0 0 58 52"><ellipse cx="30" cy="26" rx="15" ry="22" transform="rotate(31 30 26)"/><ellipse cx="29" cy="26" rx="23" ry="10" transform="rotate(-24 29 26)"/><ellipse cx="31" cy="26" rx="9" ry="18" transform="rotate(31 31 26)"/></symbol><symbol id="expand-icon" viewBox="0 0 24 24"><path d="M3 9V3h6m6 0h6v6m0 6v6h-6m-6 0H3v-6"/></symbol><symbol id="camera-icon" viewBox="0 0 24 24"><path d="M2.5 8a2 2 0 0 1 2-2h3l1.8-2h5.4l1.8 2h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.7" r="4"/></symbol><symbol id="save-icon" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></symbol></svg>
+<header><a class="brand" href="../"><img src="../mark.svg" alt="">Night Studies</a><div class="navigation"><span data-language-picker></span><button class="plain" data-library data-t="library"></button><button class="save-project" data-save-project data-t="saveProject"></button></div></header>
+<main>
+<section class="intro"><div class="title-row"><h1>Astral <em>Atelier</em></h1><span class="starlet" aria-hidden="true">✴</span></div><p data-t="intro"></p></section>
+<div class="workarea">
+<div class="performance">
+<section class="theatre" id="theatre" aria-labelledby="modeName"><div class="stage-head"><span class="mode"><i></i><span id="modeName"></span></span><button id="expand"><svg><use href="#expand-icon"/></svg><span data-t="expand"></span></button></div>
+<canvas id="stage" width="1600" height="1000" tabindex="0"></canvas>
+<div class="stage-foot"><span id="lastMotion" role="status"></span><span id="spellCount"></span></div></section>
+<div class="controls"><button id="camera" class="primary"><svg><use href="#camera-icon"/></svg><span id="cameraText"></span></button><button id="capture"><svg><use href="#save-icon"/></svg><span data-t="capture"></span></button><button id="undo" data-t="undo"></button><button id="clear" data-t="clear"></button></div>
+<div class="ns-performance" data-record-stage="stage" data-filename="Astral-Atelier"></div>
+<div class="camera-desk" id="cameraDesk" hidden><label><input id="mirrorFeed" type="checkbox"><span data-t="cameraBackdrop"></span></label><button id="calibrate" data-t="calibrate"></button></div>
+<p class="notice" id="notice" role="status"></p><video id="sensor" autoplay playsinline muted hidden></video>
+</div>
+<aside aria-labelledby="grimoire"><div class="asidetitle"><h2 id="grimoire" data-t="grimoire"></h2><span aria-hidden="true">✦</span></div><p class="guide-intro" data-t="guide"></p>
+<div class="spells">
+<button data-spell="ink"><svg class="sigil"><use href="#ink-icon"/></svg><span><strong data-t="ink"></strong><small data-guide="ink"></small></span></button>
+<button data-spell="nova"><svg class="sigil"><use href="#nova-icon"/></svg><span><strong data-t="nova"></strong><small data-guide="nova"></small></span></button>
+<button data-spell="gate"><svg class="sigil"><use href="#gate-icon"/></svg><span><strong data-t="gate"></strong><small data-guide="gate"></small></span></button>
+</div>
+<fieldset class="palette"><legend data-t="spectrum"></legend><div><button data-color="vesper"><i></i><span data-t="vesper"></span></button><button data-color="solar"><i></i><span data-t="solar"></span></button><button data-color="tide"><i></i><span data-t="tide"></span></button></div></fieldset>
+<div class="power"><label for="power" data-t="power"></label><output id="powerValue" for="power"></output><input type="range" id="power" min="35" max="100" value="75"></div>
+</aside>
+</div></main>
+<dialog id="clearDialog"><form method="dialog"><p data-t="clearAsk"></p><div><button value="cancel" data-t="cancel" autofocus></button><button class="save-project" value="clear" data-t="clear"></button></div></form></dialog>
+<script defer src="../performance-record.js?v=0f5bd8d884"></script></body></html>

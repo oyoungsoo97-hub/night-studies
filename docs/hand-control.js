@@ -4,7 +4,7 @@
   if (!button) return;
   const status = document.getElementById('handStatus');
   const assets = new URL('assets/hands/', document.currentScript.src);
-  const modelURL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+  const modelURL = new URL('hands.task',assets).href;
   const modelHash = 'fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1';
   const video = document.createElement('video');
   video.muted = true;
@@ -16,7 +16,7 @@
   let session = 0, running = false, camera, tracker, frame, previousStamp = -1, lastRead = 0;
   let readyAt = 0, missingSince = 0, gesture = null, needsReset = false;
   const clamp = n => Math.max(0, Math.min(1, n));
-  const say = s => { if (status.textContent !== s) status.textContent = s; };
+  const say = s => NightStudio.say(status,s);
 
   let modelRequest;
   async function readModel(signal) {
@@ -125,7 +125,7 @@
       camera.getVideoTracks()[0].addEventListener('ended',()=>{if(id===session)stop('카메라 연결이 종료됐습니다.');},{once:true});
       await video.play();
       if(id!==session)return;
-      say('손 인식 모델을 준비합니다. 첫 사용 시 약 8MB를 내려받습니다.');
+      say('손 인식 모델을 준비합니다. 기기에서 약 8 MB의 모델 자산을 불러옵니다.');
       modelRequest=new AbortController();
       const [{HandLandmarker,FilesetResolver},model]=await Promise.all([import(new URL('vision_bundle.mjs',assets).href),readModel(modelRequest.signal)]);
       if(id!==session)return;
