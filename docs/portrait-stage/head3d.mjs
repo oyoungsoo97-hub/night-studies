@@ -60,7 +60,7 @@ function fitPoints(face,aspect){
 }
 function directedHole(indices,set){const edges=new Map();for(let i=0;i<indices.length;i+=3){for(let j=0;j<3;j++){const a=indices[i+j],b=indices[i+(j+1)%3];if(!set.has(a)||!set.has(b))continue;const reverse=b*512+a;if(edges.has(reverse))edges.delete(reverse);else edges.set(a*512+b,[a,b]);}}
   const next=new Map([...edges.values()].map(([a,b])=>[b,a]));const first=next.keys().next().value,loop=[];let at=first;do{loop.push(at);at=next.get(at);}while(at!==undefined&&at!==first&&loop.length<=set.size);return loop;}
-function bakeHeadMaterial({photo,aspect,W,spokes,chartUV,tex,weights,cs,sn,origin,matte,maskWorks,P,skin,hair,chartRadius}){
+function bakeHeadMaterial({photo,aspect,W,spokes,chartUV,tex,weights,cs,sn,origin,matte,maskWorks,P,skin,hair,chartRadius,references}){
   if(!photo||typeof document==='undefined')return null;
   const width=photo.naturalWidth||photo.width,height=photo.naturalHeight||photo.height;if(!width||!height)return null;
   const ratio=Math.min(1,1536/Math.max(width,height)),sw=Math.max(1,Math.round(width*ratio)),sh=Math.max(1,Math.round(height*ratio));
@@ -110,6 +110,12 @@ function bakeHeadMaterial({photo,aspect,W,spokes,chartUV,tex,weights,cs,sn,origi
     for(let k=0;k<3;k++){const base=mix(scol[k],hcol[k],scalp);dst[i+k]=mix(base,source[z+k],observed);}dst[i+3]=255;
   }
   ctx.putImageData(paint,left,0);
+  if(references){
+    const [x,y,w,h]=references.faceRect;
+    ctx.drawImage(references.faceTexture,x*sw,y*sh,w*sw,h*sh);
+    ctx.drawImage(references.scalpTexture,left,0,size,size);
+    if(references.rearLayer)ctx.drawImage(references.rearLayer,left,0,size,size);
+  }
   for(let i=0;i<weights.length;i++){const chart=chartUV.get(i);if(chart){tex[i*2]=(left+.5+chart[0]*(size-1))/atlas.width;tex[i*2+1]=(.5+chart[1]*(size-1))/atlas.height;weights[i]=1;}
     else{tex[i*2]=(.5+tex[i*2]*(sw-1))/atlas.width;tex[i*2+1]=(.5+tex[i*2+1]*(sh-1))/atlas.height;}}
   return atlas;
@@ -118,13 +124,15 @@ function bakeHeadMaterial({photo,aspect,W,spokes,chartUV,tex,weights,cs,sn,origi
 export function buildHead3D(input){
   const {aspect}=input;if(!Number.isFinite(aspect)||aspect<=0)return null;let face=input.face,fit=fitPoints(face,aspect);if(!fit){face=faceFromPose(input.pose,aspect);fit=fitPoints(face,aspect);}if(!fit)return null;
   const {points:P,W,cs,sn,origin,sideDepth}=fit,L=face.landmarks;
+  const refs=fit.realDepth&&input.references;
+  if(refs)P.forEach((p,i)=>p[2]+=refs.depth[i]*W);
   const project=(x,y)=>[origin[0]+W*(cs*x-sn*y),origin[1]+W*(sn*x+cs*y)];
   const local=p=>[((p[0]-origin[0])*cs+(p[1]-origin[1])*sn)/W,((p[1]-origin[1])*cs-(p[0]-origin[0])*sn)/W];
   const sample=(x,y)=>{const s=input.sample?.(unit(x),unit(y/aspect));return s?.length>=3?[unit(s[0]),unit(s[1]),unit(s[2])]:[.55,.41,.35];};
   const colorAt=p=>sample(p[0],p[1]);const pos=[],tex=[],rgb=[],weights=[],idx=[],channels=[],chartUV=new Map();
   function vertex(p,uv=p,col=colorAt(uv),weight=1,channel=null){const id=pos.length/3;pos.push(...p);tex.push(unit(uv[0]),unit(uv[1]/aspect));rgb.push(...col);weights.push(weight);channels.push(channel);return id;}
   function quad(a,b,c,d){idx.push(a,b,c,a,c,d);}
-  const skin=average(colorAt(P[50]),colorAt(P[280]));
+  const skin=refs?average(colorAt(P[425]),colorAt(P[280])):average(colorAt(P[50]),colorAt(P[280]));
   const eyeSpecs=[[33,133,159,145,105,468],[362,263,386,374,334,473]].map(([outer,inner,top,bottom,brow,iris])=>{
     const e=average(P[top],P[bottom]),half=Math.max(.015*W,planar(P[outer],P[inner])*.51);const center=local(e),gap=Math.max(.012,planar(P[top],P[bottom])/W);
     return{e,center,half:half/W,gap,brow:local(P[brow]),zSlope:(P[inner][2]-P[outer][2])/Math.max(.001,(local(P[inner])[0]-local(P[outer])[0])*W),iris};});
@@ -202,6 +210,16 @@ export function buildHead3D(input){
       const col=lerp(colorAt(border),baseColor,blend),photoAmount=lat<.31?1-blend:(1-nape)*.16*ease((lat-.31)/.12);
       const id=vertex(q,uv,col,photoAmount);chartUV.set(id,chart(s,chartRadius*fan));return id;});stitch(previous,row);previous=row;}
   const occiput=vertex([occXY[0],occXY[1]-.018*W,backZ],hairDonor(spokes[0],.21),hair,.07);chartUV.set(occiput,[.5,.5]);closeRing(previous,occiput);
+  if(refs){
+    // Displace the scalp along the fitted head's vertical and depth axes. The
+    // two-component field is registered to the radial UV chart, not vertex order.
+    for(const [id,[u,v]] of chartUV){
+      const x=clamp(u*32-.5,0,31),y=clamp(v*32-.5,0,31),i=Math.floor(x),j=Math.floor(y);
+      const sample=(a,b,k)=>refs.warp[(Math.min(31,b)*32+Math.min(31,a))*2+k]/10000;
+      const displacement=k=>mix(mix(sample(i,j,k),sample(i+1,j,k),x-i),mix(sample(i,j+1,k),sample(i+1,j+1,k),x-i),y-j)*W;
+      const dy=displacement(0);pos[id*3]-=sn*dy;pos[id*3+1]+=cs*dy;pos[id*3+2]+=displacement(1);
+    }
+  }
   // Locate the surface behind each ear by intersecting the head at its actual y and z.
   // This keeps its root embedded even when the photograph shows a wide hairstyle or an oblique face.
   const planes=[];const localMesh=Array.from({length:pos.length/3},(_,i)=>{const p=pos.slice(i*3,i*3+3);return [...local(p),p[2]/W];});
@@ -209,7 +227,7 @@ export function buildHead3D(input){
     if(Math.abs(det)<1e-7)continue;planes.push({a,b,c,y1,y2,z1,z2,det,lo:Math.min(a[1],b[1],c[1]),hi:Math.max(a[1],b[1],c[1])});}
   function shellX(sign,y,z){let exterior=-Infinity;for(const t of planes){if(y<t.lo||y>t.hi)continue;const dy=y-t.a[1],dz=z-t.a[2],u=(dy*t.z2-dz*t.y2)/t.det,v=(dz*t.y1-dy*t.z1)/t.det;
     if(u<0||v<0||u+v>1)continue;exterior=Math.max(exterior,sign*(t.a[0]+u*(t.b[0]-t.a[0])+v*(t.c[0]-t.a[0])));}return exterior;}
-  for(const sign of [-1,1]){const temple=local(P[sign<0?234:454]);let matches=0;
+  for(const sign of refs?[]:[-1,1]){const temple=local(P[sign<0?234:454]);let matches=0;
     for(let j=-3;j<=4;j++)for(let i=0;i<5;i++){const q=project(temple[0]+sign*i*.012,temple[1]+j*.027);if(within(q)&&(!maskWorks||matte(q)>.48)&&colorDistance(colorAt(q),skin)<.31)matches++;}
     if(matches<4&&crown.length)continue;const ey=temple[1]+.028,ez=-.245+sideDepth*temple[0]/W,baseX=shellX(sign,ey,ez);if(!Number.isFinite(baseX))continue;
     const anatomical=Math.abs(temple[0])+.004,atEar=(y,z)=>{const surface=shellX(sign,y,z);return Math.min(anatomical,Number.isFinite(surface)?surface:baseX)-.010;};
@@ -241,12 +259,38 @@ export function buildHead3D(input){
   const lowerLip=[95,88,178,87,14,317,402,318,324,17,84,314,181,405,91,321];
   for(const id of lowerLip){const ch=channels[id];ch.jaw=Math.max(ch.jaw,.94*ease((1.15-Math.abs((ch.x-mouth[0])/mw))/.57));}
   for(const id of [191,80,81,82,13,312,311,310,415])channels[id].jaw=0;
-  const texture=bakeHeadMaterial({photo:input.photo,aspect,W,spokes,chartUV,tex,weights,cs,sn,origin,matte,maskWorks,P,skin,hair,chartRadius});
+  if(refs){
+    // The braid crosses the nape before falling over the right shoulder.
+    // The measured outline is in the reference photograph's 400-unit frame.
+    const path=[[220,111,-45,10],[213,134,-50,15],[190,150,-39,16],[174,158,-25,15],[162,172,-17,16],[153,190,-12,16],[148,208,-9,15],[143,224,-4,14],[139,239,2,13],[134,253,7,12],[129,266,13,10],[124,281,19,8.8],[118,298,25,8],[116,311,31,7],[111,329,39,5.6],[109,340,42,3.4],[113,350,42,1.8],[116,354,41,.25]];
+    const radial=20,steps=(path.length-1)*5;
+    let lastRing;
+    for(let row=0;row<=steps;row++){
+      const t=row/5,i=Math.min(path.length-2,Math.floor(t)),j=t-i;
+      const [x,y,z,r]=path[i].map((n,k)=>mix(n,path[i+1][k],j));
+      const tangent=path[i+1].map((n,k)=>n-path[i][k]);
+      const len=Math.max(.001,Math.hypot(tangent[0],tangent[1]));
+      const dx=tangent[1]/len,dy=-tangent[0]/len,ring=[];
+      for(let k=0;k<radial;k++){
+        const a=k*tau/radial,plait=(1+.115*Math.cos(3*a-t*2.85));
+        const edge=r*plait*Math.cos(a),bulge=r*.75*plait*Math.sin(a);
+        const point=[(x+edge*dx)/400,(y+edge*dy)/400,(z+bulge)/400];
+        const donorY=clamp(y,161,338),donorX=x+edge*.56*dx;
+        const donor=[(t<4?163+Math.cos(a)*7:donorX)/400,donorY/400];
+        const c=colorAt(donor),shade=.80+.12*Math.sin(a-t*2.2);
+        const pigment=c[0]>.48||c[1]>.28?hair:c;
+        ring.push(vertex(point,donor,pigment.map(value=>value*shade),t>3&&Math.sin(a)>.32&&c===pigment ? .76 : 0,{braid:1-ease((t-.5)/7)*.95}));
+      }
+      if(lastRing)stitch(ring,lastRing);
+      lastRing=ring;
+    }
+  }
+  const texture=bakeHeadMaterial({photo:input.photo,aspect,W,spokes,chartUV,tex,weights,cs,sn,origin,matte,maskWorks,P,skin,hair,chartRadius,references:refs});
   const positions=new Float32Array(pos),uv=new Float32Array(tex),colors=new Float32Array(rgb),photoWeight=new Float32Array(weights),indices=new Uint16Array(idx);
   const pivotXY=project(headCenter[0],headCenter[1]+.16),pivotZ=-W*.23;
   const shoulders=input.pose?.landmarks;const length=positions.length/3;
   function pose(frame={},out=new Float32Array(positions.length)){
-    const f=frame.pose||{},yaw=(f.yaw||0)*.76,tilt=(f.pitch||0)*.46,roll=(f.roll||0)*.39,depth=(f.depth||0)*W*.23;
+    const f=frame.pose||{},yaw=(f.yaw||0)*1.38,tilt=(f.pitch||0)*.72,roll=(f.roll||0)*.60,depth=(f.depth||0)*W*.23;
     const cy=Math.cos(yaw),sy=Math.sin(yaw),ct=Math.cos(tilt),st=Math.sin(tilt),cr=Math.cos(roll),sr=Math.sin(roll);
     const jaw=(f.jaw||0),smL=f.smileL||0,smR=f.smileR||0,puck=f.pucker||0,bL=f.blinkL||0,bR=f.blinkR||0;
     let torsoC=1,torsoS=0,bodyScale=1,bodyDX=0,bodyDY=0,bodyDZ=0;
@@ -264,7 +308,7 @@ export function buildHead3D(input){
         const open=jaw*p.jaw*(p.shellJaw??1)*.32;
         if(open){const y0=y+W*.055,z0=z+W*.045,c=Math.cos(open),s=Math.sin(open);y=y0*c+z0*s-W*.055;z=z0*c-y0*s-W*.045;}}
       const x1=cy*x+sy*z,z1=cy*z-sy*x,y1=ct*y+st*z1,z2=ct*z1-st*y;
-      const neckInfluence=p?.neck===undefined?1:input.joinNeck?1-.30*ease(p.neck):1-ease((p.neck-.12)/.64);
+      const neckInfluence=p?.braid??(p?.neck===undefined?1:input.joinNeck?1-.77*ease(p.neck):1-ease((p.neck-.12)/.64));
       const rx=mix(x,cr*x1-sr*y1,neckInfluence),ry=mix(y,sr*x1+cr*y1,neckInfluence),ix=cs*rx-sn*ry,iy=sn*rx+cs*ry;
       out[j]=pivotXY[0]+bodyDX+(ix*torsoC-iy*torsoS)*bodyScale;out[j+1]=pivotXY[1]+bodyDY+(iy*torsoC+ix*torsoS)*bodyScale;out[j+2]=pivotZ+mix(z,z2+depth,neckInfluence)+bodyDZ;
     }return out;

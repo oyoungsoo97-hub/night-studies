@@ -41,7 +41,7 @@ async function createTask(kind, mode, signal) {
     const still=mode==='IMAGE';
     const Task={face:lib.FaceLandmarker,hands:lib.HandLandmarker,pose:lib.PoseLandmarker}[kind];
     const settings={
-      face:{numFaces:still?5:1,outputFaceBlendshapes:true,minFaceDetectionConfidence:.42,minFacePresenceConfidence:.42},
+      face:{numFaces:still?5:1,outputFaceBlendshapes:true,outputFacialTransformationMatrixes:!still,minFaceDetectionConfidence:.42,minFacePresenceConfidence:.42},
       hands:{numHands:still?4:2,minHandDetectionConfidence:.42,minHandPresenceConfidence:.42},
       pose:{numPoses:still?3:1,outputSegmentationMasks:still,minPoseDetectionConfidence:.42,minPosePresenceConfidence:.42}
     }[kind];
@@ -61,7 +61,7 @@ function readHands(result) {
 }
 function readFace(result) {
   if (!result?.faceLandmarks?.length) return null;
-  return {landmarks:result.faceLandmarks[0],blendshapes:Object.fromEntries((result.faceBlendshapes?.[0]?.categories||[]).map(c=>[c.categoryName,c.score]))};
+  return {landmarks:result.faceLandmarks[0],matrix:result.facialTransformationMatrixes?.[0]?.data,blendshapes:Object.fromEntries((result.faceBlendshapes?.[0]?.categories||[]).map(c=>[c.categoryName,c.score]))};
 }
 export const detectPortrait=(image,options)=>analysePortrait(image,createTask,options);
 export async function startTracking({video,hands=true,face=false,pose=false,onFrame=()=>{},onStatus=()=>{},signal}){

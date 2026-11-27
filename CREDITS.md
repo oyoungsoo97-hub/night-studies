@@ -8,13 +8,13 @@
 
 ## Winter (aespa) · 에스파 윈터
 
-**한국어.** 기본 예시는 2025년 3월 26일 폴로 랄프 로렌 행사에서 윈터가 손인사하는 티비텐(TV10) 영상의 한 장면입니다. 사진을 상반신 중심으로 잘라 WebP로 변환하고 인물의 3D 메시와 텍스처를 재구성했습니다.
+**한국어.** 2025년 3월 26일 폴로 랄프 로렌 행사에서 티비텐이 촬영한 사진 여섯 장과 이동 장면으로 얼굴 깊이와 머리 윤곽을 맞췄습니다. 원본을 자르고 색을 맞춰 3D 재질에 투영했습니다. 뒷머리의 웨이브, 오른쪽 어깨의 땋은 머리와 등판의 재단은 뉴스엔이 촬영한 실제 후면을 관찰해 모델링했습니다. 등판의 체크와 뒷머리 질감은 티비텐 자료에서 재구성했습니다.
 
-**English.** The default study uses a frame of Winter waving at the Polo Ralph Lauren photo call on 26 March 2025. The source frame by TV10 was cropped and converted to WebP, then used for the reconstructed mesh, textures and gallery views.
+**English.** Six TV10 stills and walking footage from the Polo Ralph Lauren event on 26 March 2025 were registered to fit facial depth and the outline of the head. Cropped, colour-matched photographs were projected onto the mesh. A rear view in Newsen's report informed the low waves, right-shoulder braid and shirt construction. The posterior materials were reconstructed from TV10's hair and fabric imagery.
 
-**Deutsch.** Die Standardstudie zeigt Winter beim Winken auf dem Fototermin von Polo Ralph Lauren am 26. März 2025. Das Standbild von TV10 wurde zugeschnitten, in WebP umgewandelt und als Grundlage für das 3D-Modell, seine Texturen und die Galerieansichten verwendet.
+**Deutsch.** Sechs Standbilder und eine Gehsequenz von TV10 beim Polo-Ralph-Lauren-Termin am 26. März 2025 dienten zur Anpassung der Gesichtstiefe und der Kopfform. Die Fotos wurden zugeschnitten, farblich angeglichen und auf das Modell projiziert. Eine Rückansicht im Newsen-Bericht diente als Vorlage für die Wellen im Nacken, den Zopf über der rechten Schulter und den Hemdschnitt. Haar- und Stofftexturen stammen aus dem Material von TV10.
 
-[Original · 티비텐 (TV10) · Wikimedia Commons](https://commons.wikimedia.org/?curid=162907797) · [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/)
+티비텐 (TV10) · [Film](https://www.youtube.com/watch?v=4j6nJVVj1hk) · [P1](https://commons.wikimedia.org/?curid=162907815) · [P2](https://commons.wikimedia.org/?curid=162907797) · [P3](https://commons.wikimedia.org/?curid=162907800) · [P4](https://commons.wikimedia.org/?curid=162907799) · [P5](https://commons.wikimedia.org/?curid=162907803) · [P6](https://commons.wikimedia.org/?curid=162907806) · [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). [후면 참고 영상 · Rear-view reference · Rückansicht: Newsen, 2:54](https://www.youtube.com/watch?v=HnmIyCYLmJc&t=174s)
 
 ## MediaPipe · 얼굴·손·몸 추적 · Gesichts-, Hand- und Körpertracking
 

@@ -18,6 +18,8 @@ Two camera stages and three studios for posters, Foley and photography. The lang
 
 ### Performing and saving
 
+The Winter study combines six TV10 stills with walking footage. Use **Front**, **Profile** and **Back** to inspect the fit. A direct rear-view recording informed the hair and garment construction. The central rear textures and the hand outside the crop are modeled. **Fit rear photo** lets you align your own crown-to-nape image locally and save it with the project.
+
 Portrait Loom opens JPEG, PNG, WebP, GIF, BMP and AVIF. HEIC requires a browser with a compatible decoder. Animated GIFs use their first frame.
 
 Choose a person in a group shot or mark the eyes and mouth of a drawing. Drag on the 3D figure to orbit, or use the rotation slider. Change the light to see the depth of the nose, the chin and the fingers. The visible surfaces use the photograph. The shape and materials of the hidden sides are estimated from that view. **Export 3D model** saves the current pose and its textures as a GLB. A **Save project** file keeps the editable performance.

@@ -16,6 +16,8 @@ Zwei Kamerabühnen und drei Werkstätten für Plakate, Geräusche und Fotografie
 
 ### Spielen und Speichern
 
+Die Winter-Studie verbindet sechs Standbilder von TV10 mit einer Gehsequenz. **Vorne**, **Profil** und **Hinten** zeigen die Figur aus drei Richtungen. Eine direkte Rückansicht diente als Vorlage für Frisur und Hemdschnitt. Die Textur in der Rückenmitte, Teile des Hinterkopfs und die Hand außerhalb des Bildes wurden modelliert. Mit **Rückansicht einpassen** kannst du ein eigenes Foto vom Scheitel bis zum Nacken ausrichten und im Projekt speichern.
+
 Portrait Loom öffnet JPEG, PNG, WebP, GIF, BMP und AVIF. Für HEIC benötigt der Browser einen passenden Decoder. Bei animierten GIFs wird das erste Bild verwendet.
 
 Wähle eine Person im Gruppenfoto oder markiere bei einer Zeichnung Augen und Mund. Ziehe an der 3D-Figur oder drehe sie mit dem Regler. Wechsle das Licht, um Nase, Kinn und Finger im Profil zu sehen. Sichtbare Flächen erhalten die Textur des Fotos. Form und Material verdeckter Seiten werden aus diesem einen Blickwinkel geschätzt. **3D-Modell speichern** exportiert die aktuelle Pose mit Texturen als GLB. Mit **Projekt speichern** bleibt der Auftritt bearbeitbar.

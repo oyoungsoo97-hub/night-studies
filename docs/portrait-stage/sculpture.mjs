@@ -1,5 +1,5 @@
-import {buildHead3D} from './head3d.mjs?v=da1a2754c5';
-import {buildFigure3D} from './figure3d.mjs?v=d3f4851903';
+import {buildHead3D} from './head3d.mjs?v=4cacebc87b';
+import {buildFigure3D} from './figure3d.mjs?v=0d4776ec46';
 
 export function normalsFor(points,triangles,out=new Float32Array(points.length)){
   out.fill(0);
@@ -26,8 +26,8 @@ function sampler(photo){
     return [data[i]/255,data[i+1]/255,data[i+2]/255];
   };
 }
-export function buildSculpture(photo,{face,hands,pose,aspect}){
-  const sample=sampler(photo),input={photo,aspect,face,hands,pose,mask:pose?.mask,sample};
+export function buildSculpture(photo,{face,hands,pose,aspect,references}){
+  const sample=sampler(photo),input={photo,aspect,references,face,hands,pose,mask:pose?.mask,sample};
   let head=buildHead3D({...input,joinNeck:true});
   const figure=buildFigure3D({...input,head});
   if(head&&figure?.neckStart==null)head=buildHead3D(input);
@@ -52,7 +52,7 @@ export function buildSculpture(photo,{face,hands,pose,aspect}){
   smoothNeck();
   if(!parts.length||![...min,...max].every(Number.isFinite))return null;
   const framing={min:[...min],max:[...max]};
-  return {parts:parts.map(row=>row[1]),min,max,framing,count,photo,sample,
+  return {parts:parts.map(row=>row[1]),inferredPalms:figure?.inferredPalms,min,max,framing,count,photo,sample,
     update(frame){
       for(const [,p] of parts){p.pose(frame,p.current);normalsFor(p.current,p.indices,p.normals);}
       smoothNeck();

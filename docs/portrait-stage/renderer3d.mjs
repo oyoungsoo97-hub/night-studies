@@ -47,7 +47,11 @@ const fragment=`
     if(alternate>.001){
       vec3 sleeve=texture2D(photograph,clamp(tex+vec2(plateOffset,0.),0.,1.)).rgb;
       projected=mix(projected,sleeve,min(alternate,1.));
-      if(alternate>1.)projected=mix(sleeve,texture2D(photograph,clamp(tex+vec2(2.*plateOffset,0.),0.,1.)).rgb,alternate-1.);
+      if(alternate>1.){
+        vec3 torso=texture2D(photograph,clamp(tex+vec2(2.*plateOffset,0.),0.,1.)).rgb;
+        projected=mix(sleeve,torso,min(1.,alternate-1.));
+        if(alternate>2.)projected=mix(torso,texture2D(photograph,clamp(tex+vec2(3.*plateOffset,0.),0.,1.)).rgb,alternate-2.);
+      }
     }
     vec3 base=mix(albedo,projected,clamp(coverage,0.,1.));
     vec3 n=normalize(viewNormal);

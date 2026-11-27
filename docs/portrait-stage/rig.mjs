@@ -18,7 +18,26 @@ export function faceSignal(face,aspect){
   const orient=(a,b)=>hypot(p(a),p(b))/span;
   const irisBalance=(center,a,b,up,down)=>{if(!pts[center])return [0,0];const c=p(center),m=mid(p(a),p(b)),width=Math.max(.001,hypot(p(a),p(b))),ey=mid(p(up),p(down));return [((c.x-m.x)*cs+(c.y-m.y)*sn)/width,((c.y-ey.y)*cs-(c.x-ey.x)*sn)/width];};
   const a=irisBalance(468,33,133,159,145),b=irisBalance(473,362,263,386,374);
-  return {depth:span,smileL:s.mouthSmileRight??0,smileR:s.mouthSmileLeft??0,pucker:Math.max(s.mouthPucker||0,(s.mouthFunnel||0)*.78),gazeX:(a[0]+b[0])*.5,gazeY:(a[1]+b[1])*.5,browL:((s.browOuterUpRight||0)*.65+(s.browInnerUp||0)*.35)-(s.browDownRight||0)*.6,browR:((s.browOuterUpLeft||0)*.65+(s.browInnerUp||0)*.35)-(s.browDownLeft||0)*.6,
+  // MediaPipe's column-major transform maps the canonical face into camera space.
+  // Its rotation is independent of eye foreshortening at three-quarter and profile angles.
+  const m=face.matrix,angles={};
+  if(m?.length===16 && Array.from(m).every(Number.isFinite) && Math.hypot(m[8],m[9],m[10])>.01){
+    angles.turn=Math.atan2(m[8],m[10]);
+    angles.nod=-Math.atan2(m[9],Math.hypot(m[8],m[10]));
+    angles.lean=Math.atan2(m[1],m[5]);
+    if(Math.abs(m[14])>1)angles.distance=1/Math.abs(m[14]);
+  }else if([33,263,10,152].every(i=>Number.isFinite(pts[i]?.z))){
+    const diff=(a,b)=>[pts[a].x-pts[b].x,(pts[a].y-pts[b].y)*aspect,pts[a].z-pts[b].z];
+    const x=diff(263,33),down=diff(152,10),length=Math.hypot(...x);
+    const n=[x[1]*down[2]-x[2]*down[1],x[2]*down[0]-x[0]*down[2],x[0]*down[1]-x[1]*down[0]];
+    if(length>.001 && Math.hypot(...n)>.00001){
+      angles.turn=Math.atan2(-n[0],n[2]);
+      angles.nod=Math.atan2(-n[1],Math.hypot(n[0],n[2]));
+      angles.lean=-Math.asin(clamp(x[1]/length,-1,1));
+      angles.eyeDepth=length;
+    }
+  }
+  return {...angles,depth:span,smileL:s.mouthSmileRight??0,smileR:s.mouthSmileLeft??0,pucker:Math.max(s.mouthPucker||0,(s.mouthFunnel||0)*.78),gazeX:(a[0]+b[0])*.5,gazeY:(a[1]+b[1])*.5,browL:((s.browOuterUpRight||0)*.65+(s.browInnerUp||0)*.35)-(s.browDownRight||0)*.6,browR:((s.browOuterUpLeft||0)*.65+(s.browInnerUp||0)*.35)-(s.browDownLeft||0)*.6,
     blinkL:s.eyeBlinkRight??clamp(1-orient(159,145)/.065,0,1),blinkR:s.eyeBlinkLeft??clamp(1-orient(386,374)/.065,0,1),jaw:s.jawOpen??clamp(orient(13,14)*2.8,0,1),roll:angle,yaw:((nose.x-c.x)*cs+(nose.y-c.y)*sn)/span,pitch:((nose.y-c.y)*cs-(nose.x-c.x)*sn)/span};
 }
 export function relativePose(now,base,gain){
@@ -30,6 +49,15 @@ export function relativePose(now,base,gain){
   for(const k of ['smileL','smileR','pucker'])a[k]=clamp(((now[k]??0)-(base[k]??0))*gain*1.45,0,1);
   a.gazeX=clamp(-((now.gazeX??0)-(base.gazeX??0))*7*gain,-1,1);a.gazeY=clamp(((now.gazeY??0)-(base.gazeY??0))*8*gain,-1,1);
   a.depth=base.depth>0?clamp(Math.log(Math.max(.03,now.depth)/base.depth)*2.8*gain,-1,1):0;
+  if(Number.isFinite(now.turn)&&Number.isFinite(base.turn)){
+    const visible=1-.85*ease((Math.abs(now.turn)-.66)/.57);
+    a.gazeX*=visible;a.gazeY*=visible;
+    a.yaw=clamp(-radians(now.turn-base.turn)*gain/1.38,-1,1);
+    a.pitch=clamp(radians(now.nod-base.nod)*gain/.72,-1,1);
+    a.roll=clamp(radians(now.lean-base.lean)*gain/.60,-1,1);
+    if(now.eyeDepth>0 && base.eyeDepth>0)a.depth=clamp(Math.log(now.eyeDepth/base.eyeDepth)*2.8*gain,-1,1);
+    if(now.distance>0 && base.distance>0)a.depth=clamp(Math.log(now.distance/base.distance)*2.8*gain,-1,1);
+  }
   return a;
 }
 // Two anchors define a local face coordinate system when the imported portrait has no detected face.

@@ -300,7 +300,7 @@ async function toggleCamera(){
  if(cameraMode!=='off'){stopCamera();return;}
  const id=++revision;cameraMode='starting';controller=new AbortController();say('permission');ui();
  try{
-  const {startTracking}=await import('../tracking.mjs?v=188cd72e71');
+  const {startTracking}=await import('../tracking.mjs?v=e3e9fc301c');
   if(id!==revision)return;
   const active=await startTracking({video,hands:true,face:false,signal:controller.signal,
    onFrame:f=>{if(id===revision)captureHands(f);},
